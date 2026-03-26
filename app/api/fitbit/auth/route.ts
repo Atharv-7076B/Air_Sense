@@ -6,6 +6,8 @@ import {
   getFitbitAuthURL,
 } from "@/lib/fitbit-client";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     console.log("[Fitbit Auth] Starting OAuth flow...");
@@ -62,15 +64,13 @@ export async function GET(request: Request) {
     );
     console.log("[Fitbit Auth] Full auth URL:", authURL);
 
+    const oauthContext = Buffer.from(
+      JSON.stringify({ state, codeVerifier }),
+      "utf8",
+    ).toString("base64url");
+
     const response = NextResponse.redirect(authURL);
-    response.cookies.set("fitbit_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 600, // 10 minutes
-      path: "/",
-    });
-    response.cookies.set("fitbit_oauth_state", state, {
+    response.cookies.set("fitbit_oauth_ctx", oauthContext, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
