@@ -25,6 +25,11 @@ function getAppBaseURL(): string {
   return baseUrl.replace(/\/+$/, "");
 }
 
+function getFitbitAuthRestartURL(request: Request): string {
+  const requestUrl = new URL(request.url);
+  return `${requestUrl.origin}/api/fitbit/auth`;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,10 +43,7 @@ export async function GET(request: Request) {
     }
 
     if (!code || !returnedState) {
-      return NextResponse.json(
-        { error: "Missing code or state parameter" },
-        { status: 400 },
-      );
+      return NextResponse.redirect(getFitbitAuthRestartURL(request));
     }
 
     // Verify state and get code verifier from cookie-based OAuth context
@@ -78,20 +80,14 @@ export async function GET(request: Request) {
 
     if (!storedState || !safeCompareState(returnedState, storedState)) {
       cookieStore.delete("fitbit_oauth_ctx");
-      return NextResponse.json(
-        { error: "Invalid state parameter - possible CSRF attack" },
-        { status: 403 },
-      );
+      return NextResponse.redirect(getFitbitAuthRestartURL(request));
     }
 
     // State is single-use; clear it immediately after successful validation.
     cookieStore.delete("fitbit_oauth_ctx");
 
     if (!codeVerifier) {
-      return NextResponse.json(
-        { error: "Missing code verifier - please try again" },
-        { status: 400 },
-      );
+      return NextResponse.redirect(getFitbitAuthRestartURL(request));
     }
 
     // Exchange code for tokens
