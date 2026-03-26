@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌍 AirSense – Smart Air Quality & Health Analytics Platform
 
-## Getting Started
+AirSense is an intelligent web application designed to provide real-time air quality insights, personalized health recommendations, and predictive analytics using AI-driven models.
 
-First, run the development server:
+It helps users make informed decisions about their health and environment based on air pollution data.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🚀 Features
+
+- 🌫️ Real-time Air Quality Index (AQI) tracking  
+- 📊 Historical AQI data analysis  
+- 🤖 AI-powered health recommendations  
+- 📈 Predictive analytics using ARIMA models  
+- 🧠 Fuzzy logic-based decision system  
+- 🏃 Personalized exposure & fitness score calculation  
+- 🌍 City-based search and insights  
+- 🧳 Travel advisory based on air quality  
+- 📱 Responsive and modern UI  
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- Next.js (React)
+- TypeScript
+- Tailwind CSS
+
+### Backend & Data
+- Node.js (API Routes)
+- Prisma ORM
+
+### Analytics & AI
+- Python (ARIMA, Fuzzy Logic)
+- Custom health scoring algorithms
+
+---
+
+## 📁 Project Structure
+
+```
+AirSense/
+├── app/                # Next.js app routes
+├── components/         # UI components
+├── lib/                # Business logic & utilities
+├── prisma/             # Database schema
+├── services/           # Python analytics services
+├── docs/               # Project documentation
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Installation & Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Clone the repository
+```
+git clone https://github.com/Atharv-7076B/Air_Sense.git
+cd Air_Sense
+```
 
-## Learn More
+### 2. Install dependencies
+```
+npm install
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Configure environment variables  
+Create a `.env` file in the root directory:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+DATABASE_URL=your_database_url
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run the application
+```
+npm run dev
+```
 
-## Deploy on Vercel
+### 5. Open in browser
+```
+http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📸 Screenshots
+
+> Add 2–3 screenshots of your project UI here
+
+---
+
+## 📊 Use Cases
+
+- Health monitoring based on air pollution  
+- Smart travel planning  
+- Fitness and exposure tracking  
+- Environmental data analysis  
+
+---
+
+## 🎯 Future Enhancements
+
+- Mobile application integration  
+- Real-time IoT sensor data integration  
+- User authentication & dashboards  
+- Cloud deployment and scalability  
+
+---
+
+## 👨‍💻 Author
+
+**Atharv Mohite**  
+Full Stack Java Developer  
+
+- GitHub: https://github.com/Atharv-7076B  
+- LinkedIn: https://www.linkedin.com/in/atharv-mohite-0b06b72a4  
+
+---
+
+## ⭐ Support
+
+If you found this project useful, consider giving it a ⭐ on GitHub!
