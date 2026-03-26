@@ -6,6 +6,7 @@ import crypto from "crypto";
 const FITBIT_AUTH_URL = "https://www.fitbit.com/oauth2/authorize";
 const FITBIT_TOKEN_URL = "https://api.fitbit.com/oauth2/token";
 const FITBIT_API_BASE = "https://api.fitbit.com";
+const FITBIT_CALLBACK_PATH = "/api/fitbit/callback";
 
 const FITBIT_SCOPES = [
   "activity",
@@ -29,13 +30,28 @@ export function generateState(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
+function getFitbitRedirectURI(): string {
+  const explicitRedirectUri = process.env.FITBIT_REDIRECT_URI?.trim();
+  if (explicitRedirectUri) {
+    return explicitRedirectUri.replace(/\/+$/, "");
+  }
+
+  const baseUrl = process.env.NEXTAUTH_URL?.trim();
+  if (!baseUrl) {
+    throw new Error(
+      "NEXTAUTH_URL or FITBIT_REDIRECT_URI must be configured in environment variables",
+    );
+  }
+
+  return `${baseUrl.replace(/\/+$/, "")}${FITBIT_CALLBACK_PATH}`;
+}
+
 // Build OAuth2 authorization URL
 export function getFitbitAuthURL(params: {
   codeChallenge: string;
   state: string;
 }): string {
   const clientId = process.env.FITBIT_CLIENT_ID;
-  const baseUrl = process.env.NEXTAUTH_URL;
 
   if (!clientId) {
     throw new Error(
@@ -43,35 +59,20 @@ export function getFitbitAuthURL(params: {
     );
   }
 
-  if (!baseUrl) {
-    throw new Error(
-      "NEXTAUTH_URL is not configured in environment variables. " +
-        "Set it to your production URL (e.g., https://airsense-app.vercel.app)",
-    );
-  }
+  const redirectUri = getFitbitRedirectURI();
+  const encodedRedirectUri = encodeURIComponent(redirectUri);
+  console.log("Redirect URI:", redirectUri);
 
-  // Construct redirect_uri with no trailing slash issues
-  const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/fitbit/callback`;
-
-  // Debug logging for OAuth issues
-  console.log("[Fitbit OAuth] Building authorization URL:", {
-    clientId: clientId.substring(0, 5) + "***",
-    baseUrl,
-    redirectUri,
-    state: params.state.substring(0, 8) + "***",
+  const authParams = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    scope: FITBIT_SCOPES,
+    code_challenge: params.codeChallenge,
+    code_challenge_method: "S256",
+    state: params.state,
   });
 
-  const url = new URL(FITBIT_AUTH_URL);
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", FITBIT_SCOPES);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("state", params.state);
-  url.searchParams.set("code_challenge", params.codeChallenge);
-  url.searchParams.set("code_challenge_method", "S256");
-
-  const authUrl = url.toString();
-  console.log("[Fitbit OAuth] Authorization URL constructed successfully");
+  const authUrl = `${FITBIT_AUTH_URL}?${authParams.toString()}&redirect_uri=${encodedRedirectUri}`;
 
   return authUrl;
 }
@@ -89,22 +90,13 @@ export async function exchangeCodeForTokens(
 }> {
   const clientId = process.env.FITBIT_CLIENT_ID;
   const clientSecret = process.env.FITBIT_CLIENT_SECRET;
-  const baseUrl = process.env.NEXTAUTH_URL;
 
   if (!clientId || !clientSecret) {
     throw new Error("Fitbit credentials not configured");
   }
 
-  if (!baseUrl) {
-    throw new Error("NEXTAUTH_URL is not configured in environment variables");
-  }
-
-  const redirectUri = `${baseUrl.replace(/\/$/, "")}/api/fitbit/callback`;
-
-  console.log(
-    "[Fitbit OAuth] Exchanging code for tokens with redirect_uri:",
-    redirectUri,
-  );
+  const redirectUri = getFitbitRedirectURI();
+  console.log("Redirect URI:", redirectUri);
 
   const response = await fetch(FITBIT_TOKEN_URL, {
     method: "POST",

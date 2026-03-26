@@ -3,6 +3,14 @@ import { cookies } from "next/headers";
 import { exchangeCodeForTokens } from "@/lib/fitbit-client";
 import { prisma } from "@/lib/prisma";
 
+function getAppBaseURL(): string {
+  const baseUrl = process.env.NEXTAUTH_URL?.trim();
+  if (!baseUrl) {
+    throw new Error("NEXTAUTH_URL is not configured");
+  }
+  return baseUrl.replace(/\/+$/, "");
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -11,14 +19,7 @@ export async function GET(request: Request) {
     const error = searchParams.get("error");
 
     if (error) {
-      const baseUrl = process.env.NEXTAUTH_URL;
-      if (!baseUrl) {
-        return NextResponse.json(
-          { error: "NEXTAUTH_URL is not configured" },
-          { status: 500 },
-        );
-      }
-      return NextResponse.redirect(`${baseUrl}/settings?fitbit=denied`);
+      return NextResponse.redirect(`${getAppBaseURL()}/settings?fitbit=denied`);
     }
 
     if (!code || !state) {
@@ -83,27 +84,27 @@ export async function GET(request: Request) {
     cookieStore.delete("fitbit_code_verifier");
     cookieStore.delete("fitbit_state");
 
-    const baseUrl = process.env.NEXTAUTH_URL;
-    if (!baseUrl) {
-      return NextResponse.json(
-        { error: "NEXTAUTH_URL is not configured" },
-        { status: 500 },
-      );
-    }
-    console.log(
-      "[Fitbit OAuth] Successfully connected. Redirecting to:",
-      `${baseUrl}/settings?fitbit=connected`,
+    return NextResponse.redirect(
+      `${getAppBaseURL()}/settings?fitbit=connected`,
     );
-    return NextResponse.redirect(`${baseUrl}/settings?fitbit=connected`);
   } catch (error) {
     console.error("[Fitbit OAuth] Callback error:", error);
-    const baseUrl = process.env.NEXTAUTH_URL;
-    if (!baseUrl) {
+
+    try {
+      const cookieStore = await cookies();
+      cookieStore.delete("fitbit_code_verifier");
+      cookieStore.delete("fitbit_state");
+    } catch {
+      // Ignore cleanup errors; we still want to return a deterministic response.
+    }
+
+    try {
+      return NextResponse.redirect(`${getAppBaseURL()}/settings?fitbit=error`);
+    } catch {
       return NextResponse.json(
-        { error: "NEXTAUTH_URL is not configured" },
+        { error: "Fitbit callback failed and NEXTAUTH_URL is not configured" },
         { status: 500 },
       );
     }
-    return NextResponse.redirect(`${baseUrl}/settings?fitbit=error`);
   }
 }
