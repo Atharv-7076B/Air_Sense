@@ -10,10 +10,15 @@ export async function GET(request: Request) {
   const city = searchParams.get('city') || 'Mumbai'
 
   try {
-    // Check cache first
-    const cached = await prisma.aQICache.findUnique({
-      where: { city: city.toLowerCase() },
-    })
+    // Check cache first. If DB/cache is unavailable, continue without caching.
+    let cached: Awaited<ReturnType<typeof prisma.aQICache.findUnique>> | null = null
+    try {
+      cached = await prisma.aQICache.findUnique({
+        where: { city: city.toLowerCase() },
+      })
+    } catch (cacheReadError) {
+      console.warn('AQI cache read failed, falling back to live fetch:', cacheReadError)
+    }
 
     const now = new Date()
     let aqiData: AQIData
@@ -40,37 +45,41 @@ export async function GET(request: Request) {
       // Fetch fresh data from WAQI/IQAir with weather enrichment
       aqiData = await getAQI(city)
 
-      // Update cache
-      await prisma.aQICache.upsert({
-        where: { city: city.toLowerCase() },
-        update: {
-          aqi: aqiData.aqi,
-          pm25: aqiData.pm25,
-          pm10: aqiData.pm10,
-          o3: aqiData.o3,
-          no2: aqiData.no2,
-          so2: aqiData.so2,
-          co: aqiData.co,
-          temperature: aqiData.temperature,
-          humidity: aqiData.humidity,
-          wind: aqiData.wind,
-          source: aqiData.source,
-        },
-        create: {
-          city: city.toLowerCase(),
-          aqi: aqiData.aqi,
-          pm25: aqiData.pm25,
-          pm10: aqiData.pm10,
-          o3: aqiData.o3,
-          no2: aqiData.no2,
-          so2: aqiData.so2,
-          co: aqiData.co,
-          temperature: aqiData.temperature,
-          humidity: aqiData.humidity,
-          wind: aqiData.wind,
-          source: aqiData.source,
-        },
-      })
+      // Update cache best-effort only.
+      try {
+        await prisma.aQICache.upsert({
+          where: { city: city.toLowerCase() },
+          update: {
+            aqi: aqiData.aqi,
+            pm25: aqiData.pm25,
+            pm10: aqiData.pm10,
+            o3: aqiData.o3,
+            no2: aqiData.no2,
+            so2: aqiData.so2,
+            co: aqiData.co,
+            temperature: aqiData.temperature,
+            humidity: aqiData.humidity,
+            wind: aqiData.wind,
+            source: aqiData.source,
+          },
+          create: {
+            city: city.toLowerCase(),
+            aqi: aqiData.aqi,
+            pm25: aqiData.pm25,
+            pm10: aqiData.pm10,
+            o3: aqiData.o3,
+            no2: aqiData.no2,
+            so2: aqiData.so2,
+            co: aqiData.co,
+            temperature: aqiData.temperature,
+            humidity: aqiData.humidity,
+            wind: aqiData.wind,
+            source: aqiData.source,
+          },
+        })
+      } catch (cacheWriteError) {
+        console.warn('AQI cache write failed, returning live data:', cacheWriteError)
+      }
     }
 
     return NextResponse.json({ data: aqiData })
