@@ -26,6 +26,7 @@ function getAppBaseURL(): string {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    console.log("[Fitbit Callback] Request host:", new URL(request.url).host);
     const code = searchParams.get("code");
     const returnedState = searchParams.get("state");
     const error = searchParams.get("error");
@@ -48,6 +49,14 @@ export async function GET(request: Request) {
 
     console.log("Returned state:", returnedState);
     console.log("Stored state:", storedState);
+    console.log(
+      "[Fitbit Callback] State cookie present:",
+      Boolean(storedState),
+    );
+    console.log(
+      "[Fitbit Callback] PKCE verifier cookie present:",
+      Boolean(codeVerifier),
+    );
 
     if (!storedState || !safeCompareState(returnedState, storedState)) {
       return NextResponse.json(

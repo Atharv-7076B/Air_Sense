@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import {
   generateCodeVerifier,
@@ -7,11 +6,18 @@ import {
   getFitbitAuthURL,
 } from "@/lib/fitbit-client";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log("[Fitbit Auth] Starting OAuth flow...");
     console.log("[Fitbit Auth] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
     console.log("[Fitbit Auth] NODE_ENV:", process.env.NODE_ENV);
+
+    const requestHost = new URL(request.url).host;
+    const redirectHost = process.env.FITBIT_REDIRECT_URI
+      ? new URL(process.env.FITBIT_REDIRECT_URI).host
+      : "(not set)";
+    console.log("[Fitbit Auth] Request host:", requestHost);
+    console.log("[Fitbit Auth] Redirect URI host:", redirectHost);
 
     if (!process.env.FITBIT_CLIENT_ID) {
       return NextResponse.json(
@@ -34,23 +40,6 @@ export async function GET() {
     const codeChallenge = generateCodeChallenge(codeVerifier);
     const state = randomUUID();
 
-    // Store PKCE verifier and state in cookies for the callback
-    const cookieStore = await cookies();
-    cookieStore.set("fitbit_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 600, // 10 minutes
-      path: "/",
-    });
-    cookieStore.set("fitbit_oauth_state", state, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 600,
-      path: "/",
-    });
-
     const authURL = getFitbitAuthURL({ codeChallenge, state });
     console.log(
       "[Fitbit Auth] Redirecting to:",
@@ -58,7 +47,23 @@ export async function GET() {
     );
     console.log("[Fitbit Auth] Full auth URL:", authURL);
 
-    return NextResponse.redirect(authURL);
+    const response = NextResponse.redirect(authURL);
+    response.cookies.set("fitbit_code_verifier", codeVerifier, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 600, // 10 minutes
+      path: "/",
+    });
+    response.cookies.set("fitbit_oauth_state", state, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     console.error("[Fitbit Auth] Error:", error);
     return NextResponse.json(
