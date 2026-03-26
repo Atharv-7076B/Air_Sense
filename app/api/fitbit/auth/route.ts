@@ -12,12 +12,27 @@ export async function GET(request: Request) {
     console.log("[Fitbit Auth] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
     console.log("[Fitbit Auth] NODE_ENV:", process.env.NODE_ENV);
 
-    const requestHost = new URL(request.url).host;
-    const redirectHost = process.env.FITBIT_REDIRECT_URI
-      ? new URL(process.env.FITBIT_REDIRECT_URI).host
-      : "(not set)";
+    const requestUrl = new URL(request.url);
+
+    const requestHost = requestUrl.host;
+    const redirectUri = process.env.FITBIT_REDIRECT_URI?.trim();
+    const redirectHost = redirectUri ? new URL(redirectUri).host : "(not set)";
     console.log("[Fitbit Auth] Request host:", requestHost);
     console.log("[Fitbit Auth] Redirect URI host:", redirectHost);
+
+    // If OAuth starts on a different deployment host than callback host,
+    // cookies are scoped to the wrong domain and state validation will fail.
+    if (redirectUri && requestHost !== redirectHost) {
+      const canonicalAuthUrl = new URL(
+        "/api/fitbit/auth",
+        new URL(redirectUri).origin,
+      );
+      console.log(
+        "[Fitbit Auth] Host mismatch detected. Redirecting auth start to canonical host:",
+        canonicalAuthUrl.toString(),
+      );
+      return NextResponse.redirect(canonicalAuthUrl.toString());
+    }
 
     if (!process.env.FITBIT_CLIENT_ID) {
       return NextResponse.json(
