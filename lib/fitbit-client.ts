@@ -51,7 +51,8 @@ export function getFitbitAuthURL(params: {
   codeChallenge: string;
   state: string;
 }): string {
-  const clientId = process.env.FITBIT_CLIENT_ID;
+  const clientId = process.env.FITBIT_CLIENT_ID?.trim();
+  const redirectUriEnv = process.env.FITBIT_REDIRECT_URI?.trim();
 
   if (!clientId) {
     throw new Error(
@@ -59,20 +60,20 @@ export function getFitbitAuthURL(params: {
     );
   }
 
-  const redirectUri = getFitbitRedirectURI();
-  const encodedRedirectUri = encodeURIComponent(redirectUri);
+  if (!redirectUriEnv) {
+    throw new Error(
+      "FITBIT_REDIRECT_URI is not configured in environment variables",
+    );
+  }
+
+  const redirectUri = redirectUriEnv.replace(/\/+$/, "");
+  const encodedScope = encodeURIComponent(FITBIT_SCOPES).replace(/\+/g, "%20");
+
+  const url = `${FITBIT_AUTH_URL}?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodedScope}`;
+
+  const authUrl = `${url}&code_challenge=${encodeURIComponent(params.codeChallenge)}&code_challenge_method=S256&state=${encodeURIComponent(params.state)}`;
+
   console.log("Redirect URI:", redirectUri);
-
-  const authParams = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    scope: FITBIT_SCOPES,
-    code_challenge: params.codeChallenge,
-    code_challenge_method: "S256",
-    state: params.state,
-  });
-
-  const authUrl = `${FITBIT_AUTH_URL}?${authParams.toString()}&redirect_uri=${encodedRedirectUri}`;
 
   return authUrl;
 }
