@@ -1,6 +1,6 @@
 # 🌍 AirSense – Smart Air Quality & Health Analytics Platform
 
-AirSense is an intelligent web application designed to provide real-time air quality insights, personalized health recommendations, and predictive analytics using AI-driven models.
+AirSense is a team-based hackathon project developed within 24 hours, focused on providing real-time air quality insights, personalized health recommendations, and predictive analytics using AI-driven models.
 
 It helps users make informed decisions about their health and environment based on air pollution data.
 
@@ -107,26 +107,15 @@ http://localhost:3000
 
 ---
 
-## 👨‍💻 Author
+## 👥 Team
 
-**Atharv Mohite**  
-Full Stack Java Developer  
-
-- GitHub: https://github.com/Atharv-7076B  
-- LinkedIn: https://www.linkedin.com/in/atharv-mohite-0b06b72a4  
+- Atharv Mohite  
+- Pratik Kulkarni  
+- Shivraj More  
+- Sarvesh Kulkarni  
 
 ---
 
 ## ⭐ Support
 
 If you found this project useful, consider giving it a ⭐ on GitHub!
-
----
-
-## 🤝 Contributors
-
-- Atharv Mohite  
-- Pratik Kulkarni  
-- Shivraj More  
-- Sarvesh Kulkarni 
-
