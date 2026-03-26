@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
     // Verify state and get code verifier from cookies
     const cookieStore = await cookies();
-    const storedState = cookieStore.get("fitbit_state")?.value;
+    const storedState = cookieStore.get("fitbit_oauth_state")?.value;
     const codeVerifier = cookieStore.get("fitbit_code_verifier")?.value;
 
     console.log("Returned state:", returnedState);
@@ -55,6 +55,9 @@ export async function GET(request: Request) {
         { status: 403 },
       );
     }
+
+    // State is single-use; clear it immediately after successful validation.
+    cookieStore.delete("fitbit_oauth_state");
 
     if (!codeVerifier) {
       return NextResponse.json(
@@ -97,7 +100,7 @@ export async function GET(request: Request) {
 
     // Clear OAuth cookies
     cookieStore.delete("fitbit_code_verifier");
-    cookieStore.delete("fitbit_state");
+    cookieStore.delete("fitbit_oauth_state");
 
     return NextResponse.redirect(
       `${getAppBaseURL()}/settings?fitbit=connected`,
@@ -108,7 +111,7 @@ export async function GET(request: Request) {
     try {
       const cookieStore = await cookies();
       cookieStore.delete("fitbit_code_verifier");
-      cookieStore.delete("fitbit_state");
+      cookieStore.delete("fitbit_oauth_state");
     } catch {
       // Ignore cleanup errors; we still want to return a deterministic response.
     }

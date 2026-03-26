@@ -43,7 +43,7 @@ export async function GET() {
       maxAge: 600, // 10 minutes
       path: "/",
     });
-    cookieStore.set("fitbit_state", state, {
+    cookieStore.set("fitbit_oauth_state", state, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
