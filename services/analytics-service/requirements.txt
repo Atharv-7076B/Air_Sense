@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+pandas
+numpy
+statsmodels
+pmdarima
+scikit-fuzzy
+pydantic

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:dev.fitbit.com)",
+      "Bash(npx next:*)",
+      "Bash(npx prisma:*)",
+      "Bash(curl:*)",
+      "Bash(source:*)",
+      "Bash(brew list:*)"
+    ]
+  }
+}

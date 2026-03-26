@@ -1,0 +1,965 @@
+\documentclass[12pt,a4paper]{report}
+
+% ============================================================
+% Packages
+% ============================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, fit, backgrounds, calc}
+
+% ============================================================
+% Formatting
+% ============================================================
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+\titleformat{\chapter}[display]
+  {\normalfont\Large\bfseries}{\chaptertitlename\ \thechapter}{12pt}{\LARGE}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ============================================================
+% Title Page
+% ============================================================
+\begin{document}
+
+\begin{titlepage}
+\centering
+\vspace*{0.5cm}
+
+{\Large\textbf{A Project Report on}}\\[0.8cm]
+{\Huge\textbf{AirSense}}\\[0.4cm]
+{\Large\textbf{Personalized Pollution Exposure Tracker}}\\[1.5cm]
+
+{\large Prepared for}\\[0.4cm]
+{\Large\textbf{DIPEX --- 2026}}\\[0.8cm]
+
+{\large\textbf{Team ID:} DEG2026-0192}\\[0.3cm]
+{\large\textbf{Theme:} Medical Healthcare}\\[1.2cm]
+
+{\large\textbf{Submitted by:}}\\[0.4cm]
+{Pratik Prashant Kulkarni}\\[0.15cm]
+{Sarvesh Pandurang Kulkarni}\\[1.5cm]
+
+{\large\textbf{Under the guidance of:}}\\[0.3cm]
+{\large Prof.\ B.B.\ Jagdale}\\[0.2cm]
+{\large Assistant Professor}
+
+\vfill
+\end{titlepage}
+
+% ============================================================
+% Front Matter
+% ============================================================
+\pagenumbering{roman}
+
+\chapter*{Acknowledgement}
+\addcontentsline{toc}{chapter}{Acknowledgement}
+We would like to express our sincere gratitude to our project guide for their invaluable guidance and constant encouragement throughout the development of this project. We also extend our thanks to the Head of the Department for providing the necessary infrastructure and support.
+
+We are grateful to all the faculty members of the Department of Computer Engineering for their cooperation and encouragement. We also acknowledge the open-source community and the developers of the APIs and libraries that made this project possible---particularly the World Air Quality Index Project (WAQI), OpenWeatherMap, OpenStreetMap Nominatim, and the Fitbit developer platform.
+
+Finally, we thank our families and friends for their unwavering support throughout this project.
+
+\newpage
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+Air pollution is a leading environmental health risk, responsible for approximately 7 million premature deaths annually worldwide. Despite the availability of Air Quality Index (AQI) data, existing monitoring tools provide generic, population-level information that fails to account for individual health vulnerabilities, physiological differences, and personal activity patterns.
+
+This project presents \textbf{AirSense}, a personalized air quality exposure tracker that bridges the gap between raw environmental data and individualized health intelligence. AirSense integrates real-time AQI data, 6--8 years of historical pollution records, wearable fitness data from Fitbit devices, and comprehensive health profiling to compute personalized exposure scores weighted by individual health vulnerability factors derived from EPA and WHO guidelines.
+
+The system employs \textbf{SARIMA (Seasonal AutoRegressive Integrated Moving Average)} time-series models for forecasting future AQI levels with 95\% confidence intervals, and a \textbf{Mamdani-type Fuzzy Inference System} with 7 input variables and 6 output variables for generating nuanced, context-aware health recommendations including mask type selection, exercise modification, ventilation advice, and medical alert levels.
+
+Additional features include individual Resilience and Fitness Scores for quantifying pollution tolerance, a General Population Sustainability Index (GPSI) for city-level comparisons, interactive AQI map visualization, and a health-aware travel advisory system.
+
+Built on a modern web technology stack with a dedicated Python microservice for analytics, AirSense demonstrates how computational intelligence techniques can transform generic environmental data into actionable, personalized health guidance.
+
+\textbf{Keywords:} Air Quality Index, Personalized Exposure Assessment, SARIMA Forecasting, Fuzzy Inference System, Wearable Health Integration, Health Vulnerability Scoring
+
+\newpage
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+
+% ============================================================
+% Main Content
+% ============================================================
+\newpage
+\pagenumbering{arabic}
+
+% ============================================================
+% Chapter 1: Introduction
+% ============================================================
+\chapter{Introduction}
+
+\section{Background}
+
+Air pollution has emerged as one of the most pressing global public health challenges of the 21st century. According to the World Health Organization (WHO), approximately 7 million people die prematurely each year due to exposure to ambient and household air pollution \cite{WHO2014airpollution}. In India alone, air pollution contributes to an estimated 1.67 million deaths annually, making it the country's largest environmental health risk \cite{CPCB2014naqi}. Cities such as Delhi, Mumbai, and Kolkata regularly experience AQI levels exceeding 300---classified as ``Hazardous'' under the EPA's Air Quality Index framework \cite{EPA2024aqitechnical}.
+
+The Air Quality Index (AQI) serves as the primary metric for communicating air quality conditions to the public. Standardized by the U.S. Environmental Protection Agency, the AQI translates complex pollutant concentrations (PM\textsubscript{2.5}, PM\textsubscript{10}, O\textsubscript{3}, NO\textsubscript{2}, SO\textsubscript{2}, CO) into a single numerical value ranging from 0 to 500 \cite{CFR40appendixG}. India's Central Pollution Control Board (CPCB) introduced its own National Air Quality Index in 2014, covering eight pollutants across six health categories \cite{CPCB2014naqi}.
+
+However, the AQI as commonly presented has a fundamental limitation: it treats all individuals as equally susceptible. An AQI of 180 carries vastly different health implications for a healthy 25-year-old athlete versus a 60-year-old with moderate asthma. The EPA's own guidelines acknowledge that sensitive groups---including individuals with respiratory conditions, cardiovascular disease, children under 5, and adults over 65---face significantly elevated risks at the same AQI levels \cite{EPA2024healtheffects}. Yet no widely available consumer tool translates this differential vulnerability into personalized, actionable guidance.
+
+\section{Motivation}
+
+The motivation for AirSense arises from three critical gaps in the current air quality information ecosystem:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Lack of Personalization:} Existing AQI applications (IQAir, Breezometer, AQICN) report the same number for everyone. They do not incorporate individual health conditions, physiological data from wearables, or lifestyle factors into their assessments. A person with severe COPD may face up to 2.5$\times$ the effective exposure compared to a healthy individual at the same AQI, yet receives identical information.
+
+  \item \textbf{Absence of Predictive Intelligence:} Current tools are reactive---they report today's air quality but cannot forecast future conditions. Users cannot plan outdoor activities, travel, or exercise schedules based on predicted AQI trends. Time-series forecasting methods such as SARIMA can provide statistically grounded predictions with confidence intervals, yet no consumer application leverages these techniques.
+
+  \item \textbf{Generic Recommendations:} When recommendations are provided, they are binary (``Unhealthy---stay indoors'') rather than nuanced. A comprehensive system should provide simultaneous guidance on mask type (surgical vs.\ KN95 vs.\ N95), exercise modification, ventilation strategy, purifier urgency, and medical alert level---all tailored to the individual's specific vulnerability profile and current activity context.
+\end{enumerate}
+
+\section{Overview of AirSense}
+
+AirSense addresses these gaps through a comprehensive, data-driven platform that computes \textit{personalized} exposure scores, generates \textit{predictive} AQI forecasts using SARIMA models, and produces \textit{nuanced} health recommendations through a fuzzy inference system. The platform integrates data from five distinct sources:
+
+\begin{itemize}[leftmargin=*]
+  \item Real-time AQI data from the World Air Quality Index (WAQI) API
+  \item Historical pollution records (6--8 years) from OpenWeatherMap Air Pollution History API
+  \item Wearable fitness data from Fitbit (heart rate, steps, sleep, SpO\textsubscript{2}) via OAuth2 PKCE authentication
+  \item User-reported health profiles including 7 respiratory conditions with severity levels
+  \item Curated population-level health statistics from WHO Global Health Observatory and India's National Health Profile
+\end{itemize}
+
+The system computes a health vulnerability multiplier (1.0$\times$ to 3.0$\times$) based on the user's medical history, applies it to activity-weighted and environment-adjusted AQI exposure, and generates six simultaneous recommendation outputs through a Mamdani-type fuzzy inference engine with 45+ rules and centroid defuzzification.
+
+\section{Organization of the Report}
+
+The remainder of this report is organized as follows: Chapter~2 reviews the relevant literature. Chapter~3 defines the problem statement. Chapter~4 states the project objectives. Chapter~5 outlines the scope and limitations. Chapter~6 details the methodology including system design, algorithms, and data flows. Chapter~7 lists the hardware and software requirements. Chapter~8 presents the conclusion and future work, and Chapter~9 provides the references.
+
+
+% ============================================================
+% Chapter 2: Literature Review
+% ============================================================
+\chapter{Literature Review}
+
+This chapter reviews the existing body of work across the five domains that AirSense draws upon: air quality monitoring frameworks, time-series forecasting for environmental data, fuzzy logic for health and environmental assessment, wearable devices for exposure assessment, and personalized health risk modeling.
+
+\section{Air Quality Monitoring and AQI Frameworks}
+
+The concept of an Air Quality Index was formalized by the U.S. EPA to provide a standardized, easily interpretable measure of air quality conditions. The AQI is calculated using breakpoint-based piecewise linear interpolation for six criteria pollutants: PM\textsubscript{2.5}, PM\textsubscript{10}, O\textsubscript{3}, NO\textsubscript{2}, SO\textsubscript{2}, and CO \cite{EPA2024aqitechnical}. The formula is:
+
+\begin{equation}
+  AQI_p = \frac{I_{HI} - I_{LO}}{BP_{HI} - BP_{LO}} \times (C_p - BP_{LO}) + I_{LO}
+  \label{eq:aqi}
+\end{equation}
+
+where $C_p$ is the pollutant concentration, $BP_{HI}$ and $BP_{LO}$ are the concentration breakpoints bounding $C_p$, and $I_{HI}$ and $I_{LO}$ are the corresponding AQI values at those breakpoints. India's CPCB adapted this framework in 2014, extending coverage to eight pollutants including ammonia (NH\textsubscript{3}) and lead (Pb) \cite{CPCB2014naqi}.
+
+The evolution from static monitoring to connected platforms has been accelerated by IoT technologies. Jo et al.~\cite{Jo2020iot} developed an IoT-based indoor air quality monitoring platform called ``Smart-Air'' that monitors aerosol, VOC, CO, CO\textsubscript{2}, and temperature-humidity, transmitting data via LTE in real time. Sung and Hsiao~\cite{Sung2021iot} extended this approach with a web-based visualization layer built on IoT architecture. He et al.~\cite{He2021iot} provided a comprehensive review of IoT technologies for air pollution prevention, highlighting the convergence of sensor networks, cloud computing, and data analytics as essential for next-generation air quality systems.
+
+\section{Time-Series Forecasting for Air Quality}
+
+Time-series forecasting methods have been extensively applied to air quality prediction. The Autoregressive Integrated Moving Average (ARIMA) model and its seasonal variant SARIMA have demonstrated strong performance for AQI forecasting, particularly when pollutant levels exhibit seasonal patterns such as winter pollution spikes in North Indian cities.
+
+Kumar and Goyal~\cite{Kumar2011forecasting} applied ARIMA models to forecast daily AQI in Delhi, comparing standalone ARIMA, principal component regression, and a hybrid approach. Their study demonstrated that ARIMA effectively captures temporal dependencies in pollution data, with the combined model achieving superior accuracy. Samal et al.~\cite{Samal2019sarima} extended this work by evaluating SARIMA and Facebook Prophet models for air pollution forecasting in Bhubaneswar, finding that SARIMA's explicit handling of seasonal periodicity (with $m=12$ for monthly data) provides reliable forecasts with quantifiable confidence intervals.
+
+Kaur et al.~\cite{Kaur2023autoregressive} conducted a comprehensive review of autoregressive models in environmental forecasting, concluding that SARIMA models combined with automated parameter selection (auto-ARIMA) offer a robust balance between model complexity and forecast accuracy. They noted that auto-ARIMA eliminates the need for manual identification of model parameters through stepwise minimization of information criteria.
+
+The SARIMA model is formally defined as $\text{ARIMA}(p,d,q)(P,D,Q)_s$, where $(p,d,q)$ are the non-seasonal autoregressive, differencing, and moving average orders, $(P,D,Q)$ are their seasonal counterparts, and $s$ is the seasonal period. The \texttt{pmdarima} library \cite{pmdarima2024} implements Hyndman and Khandakar's automatic model selection algorithm \cite{Hyndman2008forecast}, using stepwise search to minimize AIC/BIC.
+
+\section{Fuzzy Logic in Environmental and Health Applications}
+
+Fuzzy logic provides a mathematical framework for reasoning under imprecision and uncertainty---conditions inherent to environmental health assessment where crisp thresholds are often medically inappropriate.
+
+Sowlat et al.~\cite{Sowlat2011faqi} proposed a Fuzzy-based Air Quality Index (FAQI) using a Mamdani-type fuzzy inference system that addresses the abrupt category transitions in conventional AQI calculation. Their system demonstrated improved sensitivity to borderline air quality conditions compared to the standard breakpoint method, producing smoother and more clinically meaningful transitions between health categories.
+
+Olvera-Garc\'ia et al.~\cite{OlveraGarcia2016weighted} developed a weighted fuzzy inference system for air quality assessment that assigns differential importance to input variables based on their health impact. This approach aligns with AirSense's design philosophy, where health vulnerability and AQI carry higher inferential weight than secondary contextual inputs such as time-of-day.
+
+Dionova et al.~\cite{Dionova2020indoor} applied fuzzy inference to indoor air quality assessment, confirming that fuzzy systems produce more nuanced and interpretable categorizations than binary threshold-based systems, and that centroid defuzzification effectively maps fuzzy outputs to actionable recommendation categories.
+
+\section{Wearable Devices and Personal Exposure Assessment}
+
+The integration of consumer wearable devices into environmental exposure assessment represents a rapidly growing research frontier. Bernasconi et al.~\cite{Bernasconi2022wearables} conducted a scoping review identifying the potential for devices such as Fitbit and Apple Watch to contribute physiological data---heart rate, respiratory rate, blood oxygen saturation---that contextualizes environmental exposure at the individual level.
+
+Steinle et al.~\cite{Steinle2013exposure} argued for moving from static monitoring station data to spatio-temporally resolved personal exposure assessment, demonstrating that individual activity patterns, microenvironment transitions (indoor/outdoor, commuting, exercising), and physiological state significantly modulate effective pollutant intake. This work directly informs AirSense's activity-weighted exposure model, which adjusts the base AQI by breathing-rate multipliers for different activity types and indoor reduction factors for different environment types.
+
+Rappaport and Smith~\cite{Rappaport2010exposome} introduced the concept of the ``exposome''---the totality of environmental exposures from conception onward---arguing that individual-level exposure characterization is essential for understanding environment-disease relationships. AirSense operationalizes elements of this framework by fusing environmental, behavioral, and physiological data into a unified personal exposure metric.
+
+\section{Personalized Health Risk Assessment}
+
+The WHO's 2021 Global Air Quality Guidelines \cite{WHO2021aqg} provide updated evidence-based thresholds for key pollutants and explicitly acknowledge that health impacts vary significantly across population subgroups. The guidelines recommend that exposure assessment account for individual susceptibility factors including pre-existing respiratory and cardiovascular conditions, age, and pregnancy status.
+
+Nieuwenhuijsen et al.~\cite{Nieuwenhuijsen2019exposure} advocated for advancing exposure assessment science by integrating sensor technologies, geospatial analysis, and individual-level health data. Their framework envisions multi-source data integration combining environmental monitoring with personal health profiles and wearable sensor data---precisely the architecture that AirSense implements.
+
+\section{Geospatial Visualization for Environmental Data}
+
+Interactive geospatial visualization has become essential for communicating environmental data effectively. Leaflet.js \cite{Leaflet2024} has emerged as the leading open-source library for web-based map visualization, widely adopted in environmental and public health applications. Bhatia et al.~\cite{Bhatia2018webgis} demonstrated the effectiveness of Leaflet-based web GIS systems for geospatial data visualization, supporting AirSense's use of interactive AQI map overlays with color-coded pollution indicators.
+
+
+% ============================================================
+% Chapter 3: Problem Statement
+% ============================================================
+\chapter{Problem Statement}
+
+Air pollution poses a severe and growing threat to public health globally, with the WHO attributing approximately 7 million premature deaths annually to ambient and household air pollution exposure \cite{WHO2014airpollution}. In India, the situation is particularly critical, with 1.67 million annual deaths linked to air pollution and multiple cities consistently ranking among the world's most polluted \cite{CPCB2014naqi}.
+
+Despite the severity of this crisis, the tools available to individuals for understanding and managing their air quality exposure are fundamentally inadequate. The existing ecosystem suffers from the following critical deficiencies:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{No Individual Risk Assessment:} Current AQI monitoring applications report a single, generic number for an entire geographic area. An AQI reading of 180 (``Unhealthy'') is presented identically to all users regardless of their health profile. However, a person with severe COPD faces an effective exposure multiplier of up to 2.5$\times$ compared to a healthy individual, according to EPA sensitivity guidelines \cite{EPA2024healtheffects}. No consumer tool computes a \textit{personal} exposure score weighted by individual health vulnerability.
+
+  \item \textbf{No Predictive Capability:} Existing tools are purely reactive, displaying only current or recent AQI values. Users cannot plan ahead---scheduling outdoor exercise, choosing commute modes, or preparing for travel to polluted cities---because no statistically grounded forecast of future air quality conditions is available.
+
+  \item \textbf{Oversimplified Recommendations:} Health recommendations, when provided, are binary and impersonal (``Unhealthy for Sensitive Groups''). Users receive no guidance on \textit{which} mask type is appropriate, \textit{how} to modify exercise routines, \textit{whether} to open windows or activate a purifier, or \textit{when} medical consultation is warranted.
+
+  \item \textbf{No Integration with Physiological Data:} Consumer wearables continuously measure heart rate, SpO\textsubscript{2}, step count, and sleep quality---all physiologically relevant to pollution exposure and resilience. Yet no existing platform integrates this data with air quality information to produce contextualized health assessments.
+
+  \item \textbf{No Historical Context or Sustainability Trends:} Users have no visibility into whether their city's air quality is improving or deteriorating over multi-year timescales. Without historical trend analysis, neither individuals nor public health stakeholders can make data-informed decisions about long-term environmental sustainability.
+\end{enumerate}
+
+\textbf{The core problem} is the absence of a unified platform that transforms generic, population-level air quality data into personalized, predictive, and actionable health intelligence by integrating individual health profiles, wearable physiological data, time-series forecasting, and computational intelligence techniques.
+
+
+% ============================================================
+% Chapter 4: Objective
+% ============================================================
+\chapter{Objective}
+
+The primary objective of this project is to design and develop \textbf{AirSense}---a personalized air quality exposure tracking platform that bridges the gap between generic environmental data and individual health risk management.
+
+\section{Primary Objectives}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Personalized Exposure Scoring:} To develop an exposure calculation engine that computes individualized AQI exposure scores by applying health vulnerability multipliers (1.0$\times$ to 3.0$\times$) derived from EPA/WHO guidelines, incorporating respiratory conditions and severity, cardiovascular health, age, smoking status, indoor/outdoor environment type, and activity-based breathing rate factors.
+
+  \item \textbf{Time-Series Forecasting:} To implement SARIMA-based AQI forecasting using 6--8 years of real historical pollution data, enabling users to anticipate future air quality conditions with 95\% confidence intervals for time horizons ranging from 7 days to 6 months.
+
+  \item \textbf{Fuzzy Logic Recommendation Engine:} To design and implement a Mamdani-type Fuzzy Inference System with 7 input variables and 6 output variables that generates context-aware, multi-dimensional health recommendations---covering outdoor safety, mask type, purifier urgency, exercise modification, ventilation advice, and medical alert level.
+
+  \item \textbf{Wearable Data Integration:} To integrate Fitbit wearable data (heart rate, steps, sleep, SpO\textsubscript{2}) via OAuth2 PKCE authentication, feeding real-time physiological data into the exposure calculator, fitness scoring, and resilience assessment modules.
+
+  \item \textbf{Health Profile Management:} To build a comprehensive health profiling system that captures 7 respiratory conditions (asthma, COPD, bronchitis, pneumonia, tuberculosis, allergic rhinitis, sinusitis) with severity levels, along with cardiovascular, metabolic, and lifestyle factors, to compute a medically grounded vulnerability multiplier.
+\end{enumerate}
+
+\section{Secondary Objectives}
+
+\begin{enumerate}[leftmargin=*]
+  \item To compute individual Resilience Scores (0--100) and Fitness Scores (0--100) that quantify how well a user's body can tolerate and recover from pollution exposure, with detailed factor-wise breakdowns.
+
+  \item To develop a General Population Sustainability Index (GPSI) that scores cities on environmental, health, and infrastructure parameters, enabling users to compare their personal resilience against estimated city population averages.
+
+  \item To implement a city-agnostic architecture supporting any city worldwide through dynamic geocoding, replacing hardcoded city lists.
+
+  \item To build a Travel Advisory System that compares origin and destination AQI conditions with health-profile-aware warnings, preparation checklists, and product recommendations.
+
+  \item To provide interactive AQI map visualization with color-coded markers scaled by pollution severity, pollutant breakdown panels, and geolocation support.
+\end{enumerate}
+
+
+% ============================================================
+% Chapter 5: Scope
+% ============================================================
+\chapter{Scope}
+
+\section{In Scope}
+
+The following features and functionalities are within the scope of this project:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Real-Time AQI Monitoring:} Integration with the WAQI API for current air quality data for any city worldwide, with pollutant-level breakdown (PM\textsubscript{2.5}, PM\textsubscript{10}, O\textsubscript{3}, NO\textsubscript{2}, SO\textsubscript{2}, CO).
+
+  \item \textbf{Historical Data Pipeline:} Fetching, caching, and analyzing 6--8 years of historical AQI data from OpenWeatherMap Air Pollution History API with Open-Meteo as a free fallback source. Data is aggregated monthly, analyzed for trends via linear regression, and scored for sustainability.
+
+  \item \textbf{Comprehensive Health Profiling:} A detailed health intake form capturing 7 respiratory conditions with mild/moderate/severe severity, cardiovascular disease, diabetes, immunocompromised status, pregnancy, smoking status, exercise frequency, diet quality, and family respiratory history.
+
+  \item \textbf{Personalized Exposure Calculation:} Activity-weighted, environment-adjusted, health-vulnerability-multiplied exposure scoring with hourly granularity, supporting 8 indoor/outdoor environment types and 7 activity categories with breathing-rate-based multipliers.
+
+  \item \textbf{SARIMA Forecasting:} Seasonal AQI forecasting with automatic model parameter selection and 95\% confidence intervals, served via a dedicated Python analytics microservice.
+
+  \item \textbf{Fuzzy Logic Recommendations:} A 7-input, 6-output Mamdani-type fuzzy inference engine with 45+ rules and centroid defuzzification, producing simultaneous recommendations for outdoor safety, mask type, purifier urgency, exercise modification, ventilation, and medical alerts. A rule-based fallback engine ensures continuity if the analytics service is unavailable.
+
+  \item \textbf{Wearable Integration:} Fitbit OAuth2 PKCE flow for real-time retrieval of activity, heart rate, sleep, and SpO\textsubscript{2} data, feeding directly into exposure calculation and fitness/resilience scoring.
+
+  \item \textbf{Resilience and Fitness Scoring:} Composite 0--100 scores with weighted factor breakdowns, displayed with expandable detail views.
+
+  \item \textbf{City Sustainability Index (GPSI):} Environmental, health, and infrastructure scoring for Indian cities with curated WHO/NHP data, plus personal resilience comparison with percentile ranking.
+
+  \item \textbf{Travel Advisory:} Origin-destination AQI comparison with health-profile-aware advisory levels (safe/caution/warning/danger), preparation checklists, and product recommendations.
+
+  \item \textbf{Interactive AQI Map:} Map visualization with color-coded pollution markers, pollutant breakdown on selection, browser geolocation, and city search integration.
+
+  \item \textbf{Product Recommendations:} A curated database of air purifiers, masks, monitors, and supplements, driven by fuzzy logic output urgency levels and transparently labeled for commercial transparency.
+\end{enumerate}
+
+\section{Out of Scope}
+
+\begin{enumerate}[leftmargin=*]
+  \item Native mobile applications (iOS/Android)
+  \item Integration with wearable platforms other than Fitbit
+  \item Real-time air quality sensor hardware deployment
+  \item Clinical-grade medical diagnosis or prescription recommendations
+  \item Multi-user authentication with role-based access control
+  \item Integration with electronic health records (EHR) systems
+\end{enumerate}
+
+\section{Target Users}
+
+\begin{itemize}[leftmargin=*]
+  \item Individuals with respiratory conditions (asthma, COPD, bronchitis) seeking personalized air quality guidance
+  \item Health-conscious individuals and athletes planning outdoor activities in polluted cities
+  \item Parents monitoring air quality exposure for children under 5
+  \item Pregnant women in polluted urban areas
+  \item Frequent travelers between cities with different pollution levels
+  \item Public health researchers studying individual-level exposure patterns
+\end{itemize}
+
+
+% ============================================================
+% Chapter 6: Methodology
+% ============================================================
+\chapter{Methodology}
+
+This chapter describes the system design, algorithms, and data flows employed in AirSense. The methodology is organized by system architecture, followed by detailed descriptions of each computational module.
+
+\section{System Architecture}
+
+AirSense follows a three-tier architecture comprising a presentation layer, an application and intelligence layer, and a data layer. Figure~\ref{fig:architecture} illustrates the high-level system design.
+
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{4pt}
+\setlength{\fboxrule}{0.5pt}
+\footnotesize
+\fbox{\begin{minipage}{0.88\textwidth}\centering
+\textbf{Presentation Layer}\\[4pt]
+\fbox{\strut Dashboard}\;\fbox{\strut Analytics}\;\fbox{\strut Map}\;\fbox{\strut Travel}\;\fbox{\strut Recommendations}\;\fbox{\strut Settings}
+\end{minipage}}\\[3pt]
+$\downarrow$\;\textit{REST API}\;$\downarrow$\\[3pt]
+\fbox{\begin{minipage}{0.88\textwidth}\centering
+\textbf{Application \& Intelligence Layer}\\[4pt]
+\begin{tabular}{@{}p{0.42\textwidth}@{\hspace{0.04\textwidth}}p{0.42\textwidth}@{}}
+\fbox{\begin{minipage}[t]{0.42\textwidth}\centering
+\textbf{Backend API Server}\\[3pt]
+Exposure Calculation\\
+Health Profile Management\\
+Resilience / Fitness Scoring\\
+GPSI \& Travel Advisory
+\end{minipage}}
+&
+\fbox{\begin{minipage}[t]{0.42\textwidth}\centering
+\textbf{Analytics Microservice}\\[3pt]
+SARIMA Forecasting (auto-ARIMA, $m{=}12$)\\
+Fuzzy Inference Engine (Mamdani, 45+ rules)
+\end{minipage}}
+\end{tabular}
+\end{minipage}}\\[3pt]
+$\downarrow$\hspace{2cm}$\downarrow$\hspace{2cm}$\downarrow$\\[3pt]
+\fbox{\begin{minipage}{0.88\textwidth}\centering
+\textbf{Data Layer}\\[4pt]
+\begin{tabular}{@{}p{0.27\textwidth}@{\hspace{0.03\textwidth}}p{0.27\textwidth}@{\hspace{0.03\textwidth}}p{0.27\textwidth}@{}}
+\fbox{\begin{minipage}[t]{0.27\textwidth}\centering
+\textbf{Local Database}\\[3pt]
+User Profiles\\
+Health Records\\
+AQI Cache \& History\\
+City Statistics
+\end{minipage}}
+&
+\fbox{\begin{minipage}[t]{0.27\textwidth}\centering
+\textbf{External APIs}\\[3pt]
+WAQI (Real-time)\\
+OpenWeatherMap\\
+Open-Meteo (Fallback)\\
+Nominatim (Geocoding)
+\end{minipage}}
+&
+\fbox{\begin{minipage}[t]{0.27\textwidth}\centering
+\textbf{Wearable API}\\[3pt]
+Fitbit (OAuth2 PKCE)\\
+Heart Rate, SpO\textsubscript{2}\\
+Steps, Sleep, Activity
+\end{minipage}}
+\end{tabular}
+\end{minipage}}
+\caption{AirSense Three-Tier System Architecture}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Presentation Layer}
+
+The web-based frontend provides six primary modules:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Dashboard} --- Personalized exposure score with hourly breakdown, resilience and fitness score cards with expandable factor breakdowns, GPSI city comparison, SARIMA forecast visualization, current AQI with pollutant details, and health insights
+  \item \textbf{Analytics} --- Weekly exposure trends, activity breakdown by type, hourly exposure heatmap, SARIMA forecast with confidence bands, sustainability analysis with 6--8 year historical data, and year-over-year comparisons
+  \item \textbf{Map} --- Interactive map with color-coded AQI markers, pollutant breakdown on selection, and geolocation
+  \item \textbf{Travel Advisory} --- Origin-destination AQI comparison with health-aware advisory and preparation checklist
+  \item \textbf{Recommendations} --- Six-category fuzzy logic recommendations with severity indicators and product suggestions
+  \item \textbf{Settings} --- Health profile management, wearable connection, and user preferences
+\end{itemize}
+
+\subsection{Application and Intelligence Layer}
+
+The application layer comprises two components:
+
+\textbf{Backend API Server:} Acts as the intermediary between the frontend and all data sources. It handles exposure calculation, health profile management, resilience and fitness scoring, GPSI computation, travel advisory generation, and proxies requests to the analytics microservice and external APIs.
+
+\textbf{Analytics Microservice (Python):} A dedicated service hosting the computationally intensive modules:
+\begin{itemize}[leftmargin=*]
+  \item SARIMA forecasting engine using automated model selection
+  \item Fuzzy inference engine using Mamdani-type rules with centroid defuzzification
+  \item Health check endpoint for service availability monitoring
+\end{itemize}
+
+This separation allows the main application to remain responsive while computationally expensive statistical and fuzzy computations are handled independently.
+
+\subsection{Data Layer}
+
+The data layer consists of:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Local Database:} Stores user profiles, health records (7 respiratory conditions with severity), wearable connection tokens, cached AQI data, historical pollution records (6--8 years), daily exposure logs, city-level population health statistics, and product recommendation catalog with click tracking
+  \item \textbf{External APIs:} WAQI for real-time AQI, OpenWeatherMap for historical air pollution data, Open-Meteo as a free fallback, and Nominatim for geocoding and city search
+  \item \textbf{Wearable API:} Fitbit Web API via OAuth2 PKCE for real-time physiological data
+\end{itemize}
+
+\section{Health Vulnerability Scoring}
+
+The health vulnerability multiplier quantifies an individual's susceptibility to air pollution based on their health profile. It is grounded in EPA/WHO exposure guidelines \cite{EPA2024healtheffects, WHO2021aqg} and produces a score ranging from 1.0 (no elevated risk) to 3.0 (maximum vulnerability).
+
+The algorithm applies a compound scoring approach that reflects the multiplicative nature of health vulnerabilities:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Base multiplier} = 1.0
+
+  \item \textbf{Age factor} (multiplicative): Children $<$5 years receive a 1.5$\times$ multiplier reflecting their higher respiratory rate per body mass and developing immune systems. Adults 18--64 are the reference group (1.0$\times$). Seniors 75+ receive 1.6$\times$ due to diminished lung function and comorbidity prevalence.
+
+  \item \textbf{Smoking status} (multiplicative): Current smokers receive 1.5$\times$ (damaged mucociliary clearance), former smokers 1.2$\times$ (residual lung damage), and never-smokers 1.0$\times$.
+
+  \item \textbf{Respiratory conditions}: The most severe condition is applied at full multiplier weight; additional conditions contribute at 50\% of their multiplier value to avoid unrealistic compounding. Multipliers are derived from EPA sensitivity group classifications:
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Respiratory Condition Vulnerability Multipliers by Severity}
+\label{tab:respiratory}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Condition} & \textbf{Mild} & \textbf{Moderate} & \textbf{Severe} \\
+\midrule
+COPD              & 1.5$\times$ & 2.0$\times$ & 2.5$\times$ \\
+Asthma            & 1.3$\times$ & 1.6$\times$ & 2.0$\times$ \\
+Bronchitis        & 1.3$\times$ & 1.5$\times$ & 1.8$\times$ \\
+Tuberculosis      & 1.2$\times$ & 1.4$\times$ & 1.7$\times$ \\
+Pneumonia         & 1.1$\times$ & 1.3$\times$ & 1.5$\times$ \\
+Allergic Rhinitis & 1.1$\times$ & 1.2$\times$ & 1.4$\times$ \\
+Sinusitis         & 1.05$\times$ & 1.1$\times$ & 1.2$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Additional conditions are applied as weighted additive factors: cardiovascular disease (1.4$\times$--1.8$\times$ at 70\% weight), diabetes (1.1$\times$--1.3$\times$ at 70\% weight), immunocompromised status (+0.5), and pregnancy (+0.3). Family history of respiratory illness adds +0.1. The final score is capped at 3.0.
+
+\section{Personalized Exposure Calculation}
+
+The exposure calculator integrates base AQI with environmental context, activity-based breathing rate, and health vulnerability to produce a personalized exposure score:
+
+\begin{equation}
+  E = \left(\sum_{k=1}^{n} \text{AQI}_{base} \times F_{env}^{(k)} \times F_{act}^{(k)} \times F_{loc}^{(k)} \times \frac{d_k}{D}\right) \times V
+  \label{eq:exposure}
+\end{equation}
+
+where $F_{env}$ is the environment reduction factor, $F_{act}$ is the activity breathing-rate multiplier, $F_{loc}$ is the location modifier, $d_k/D$ is the fraction of total time in activity period $k$, and $V$ is the health vulnerability multiplier.
+
+\textbf{Environment Reduction Factors:} These reflect particulate filtration effectiveness across different indoor environments. For instance, an office with centralized HVAC achieves approximately 70\% particulate removal (factor = 0.30), while an apartment without air conditioning provides only 30\% reduction (factor = 0.70). Fully outdoor exposure has a factor of 1.0. Eight distinct environment types are supported, ranging from 0.30 (best filtration) to 1.0 (full exposure).
+
+\textbf{Activity Breathing-Rate Multipliers:} Derived from respiratory physiology, these reflect the increased pollutant intake during physical exertion. Sleeping (0.5$\times$) represents the lowest intake rate, while running (3.0$\times$) reflects up to six times the resting ventilation rate. Seven activity types are supported: sleeping, resting, working, commuting, walking, cycling, and running.
+
+\textbf{Risk Categories:} The final personal exposure score is classified as Low ($\leq$30), Moderate (31--60), High (61--100), or Very High ($>$100).
+
+The system generates hourly exposure breakdowns and contextual insights based on the combination of exposure level, health vulnerability, and activity patterns throughout the day.
+
+\section{SARIMA Forecasting Model}
+
+The SARIMA model $\text{ARIMA}(p,d,q)(P,D,Q)_{12}$ is applied to monthly historical AQI data to forecast future air quality conditions. The model selection and fitting process follows Hyndman and Khandakar's automated approach \cite{Hyndman2008forecast}:
+
+\begin{enumerate}[leftmargin=*]
+  \item Monthly AQI values are retrieved from the historical data cache (minimum 12 data points required for seasonal modeling).
+  \item An automated stepwise search is performed over the non-seasonal parameters $(p,d,q)$ and seasonal parameters $(P,D,Q)$ with $s=12$ (monthly seasonality), evaluating candidate models by minimizing the Akaike Information Criterion (AIC).
+  \item The selected model is fitted to the historical data.
+  \item Forecasts are generated for the requested horizon (7 days to 6 months) with 95\% confidence intervals ($\alpha = 0.05$).
+  \item If the seasonal model fails to converge (e.g., due to insufficient data), the system falls back to a non-seasonal $\text{ARIMA}(p,d,q)$ model.
+\end{enumerate}
+
+The output includes forecast date-value pairs with upper and lower confidence bounds, the selected model order, AIC, RMSE, and the number of historical data points used. This information is visualized as a forecast chart with shaded confidence bands overlaid on historical data, enabling users to assess both the predicted trajectory and the uncertainty of the forecast.
+
+\section{Fuzzy Inference System}
+
+The recommendation engine implements a Mamdani-type Fuzzy Inference System (FIS) with centroid defuzzification, drawing on the fuzzy air quality assessment approaches of Sowlat et al.~\cite{Sowlat2011faqi} and Olvera-Garc\'ia et al.~\cite{OlveraGarcia2016weighted}.
+
+\subsection{Input Variables}
+
+The system accepts seven fuzzified input variables, as described in Table~\ref{tab:fuzzy_inputs}.
+
+\begin{table}[H]
+\centering
+\caption{Fuzzy Input Variables and Their Membership Functions}
+\label{tab:fuzzy_inputs}
+\begin{tabularx}{\textwidth}{lrX}
+\toprule
+\textbf{Variable} & \textbf{Universe} & \textbf{Linguistic Terms} \\
+\midrule
+AQI                 & 0--500      & good, moderate, unhealthy for sensitive groups, unhealthy, hazardous \\
+Exposure Score      & 0--500      & low, medium, high, very high \\
+Health Vulnerability& 0--30       & low, medium, high \\
+Fitness Level       & 0--100      & poor, average, good, excellent \\
+Time of Day         & 0--24       & morning, afternoon, evening, night \\
+Activity Type       & 0--4        & sedentary, light, moderate, vigorous \\
+Forecast Trend      & $-$10 to 10 & improving, stable, worsening \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Output Variables}
+
+The system produces six simultaneous output variables, each mapped to actionable health guidance. Table~\ref{tab:fuzzy_outputs} lists the outputs and their practical interpretations.
+
+\begin{table}[H]
+\centering
+\caption{Fuzzy Output Variables with Actionable Mappings}
+\label{tab:fuzzy_outputs}
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+\textbf{Output Variable} & \textbf{Actionable Categories} \\
+\midrule
+Outdoor Safety        & Safe, Caution, Avoid outdoor activity \\
+Mask Recommendation   & None needed, Surgical mask, KN95 mask, N95 mask \\
+Purifier Urgency      & Not needed, Recommended, Essential \\
+Exercise Modification & Normal activity, Reduce intensity, Indoor only, Avoid exercise \\
+Ventilation Advice    & Open windows, Keep windows closed, Use air purifier \\
+Medical Alert         & No action, Self-monitor symptoms, Consult doctor, Seek emergency care \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Rule Base and Defuzzification}
+
+The rule base consists of 45+ Mamdani-type IF-THEN rules covering five categories:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{AQI$\times$Vulnerability rules:} e.g., IF AQI is hazardous AND vulnerability is high THEN outdoor safety is avoid AND mask is N95 AND medical alert is emergency
+  \item \textbf{Exposure-based rules:} Escalate recommendations based on cumulative daily exposure
+  \item \textbf{Time-of-day rules:} Leverage morning exercise windows when AQI is typically lower
+  \item \textbf{Fitness-based rules:} Adjust exercise modification based on cardiovascular fitness
+  \item \textbf{Forecast-trend rules:} Preemptively increase purifier urgency when AQI trend is worsening
+\end{itemize}
+
+Centroid defuzzification converts the aggregated fuzzy output to crisp numerical values (0--100), which are then mapped to the actionable categories shown in Table~\ref{tab:fuzzy_outputs}. For mask recommendations, the mapping is: $<$25 $\rightarrow$ None, 25--55 $\rightarrow$ Surgical, 55--80 $\rightarrow$ KN95, $>$80 $\rightarrow$ N95.
+
+If the analytics service is temporarily unavailable, the system automatically activates a rule-based fallback engine that provides simplified but functional threshold-based recommendations, ensuring uninterrupted user guidance.
+
+\section{Resilience and Fitness Scoring}
+
+Two composite scores quantify an individual's capacity to withstand and recover from pollution exposure.
+
+\subsection{Resilience Score (0--100)}
+
+The resilience score measures overall pollution tolerance based on five weighted factors:
+
+\begin{equation}
+  S_{res} = 0.40 \cdot H + 0.15 \cdot A + 0.20 \cdot L + 0.15 \cdot C + 0.10 \cdot R
+  \label{eq:resilience}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Resilience Score Components}
+\label{tab:resilience_factors}
+\begin{tabularx}{\textwidth}{lrX}
+\toprule
+\textbf{Factor} & \textbf{Weight} & \textbf{Description} \\
+\midrule
+Health History ($H$)  & 40\% & Inverse of health vulnerability multiplier. Fewer and less severe conditions yield higher scores. \\
+Age ($A$)             & 15\% & Gaussian distribution peaking at age 25--35 (score = 100), declining symmetrically for younger children and older adults. \\
+Lifestyle ($L$)       & 20\% & Weighted combination of smoking status (40\%), exercise frequency (35\%), and diet quality (25\%). \\
+Acclimatization ($C$) & 15\% & Logarithmic function of years lived in current city, reflecting physiological adaptation to local air quality. Caps at 20 years. \\
+Recovery ($R$)        & 10\% & Derived from wearable data: resting heart rate and SpO\textsubscript{2}. Defaults to a neutral score when wearable data is not available. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Interpretation:} Excellent ($\geq$80), Good (65--79), Average (50--64), Below Average (35--49), Poor ($<$35).
+
+\subsection{Fitness Score (0--100)}
+
+The fitness score measures current physical fitness relevant to pollution resilience:
+
+\begin{equation}
+  S_{fit} = 0.30 \cdot CV + 0.25 \cdot AL + 0.15 \cdot B + 0.15 \cdot O + 0.15 \cdot SL
+  \label{eq:fitness}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Fitness Score Components}
+\label{tab:fitness_factors}
+\begin{tabularx}{\textwidth}{lrX}
+\toprule
+\textbf{Factor} & \textbf{Weight} & \textbf{Description} \\
+\midrule
+Cardiovascular ($CV$) & 30\% & Resting heart rate and heart rate recovery post-exercise. Lower resting HR indicates better cardiovascular fitness. \\
+Activity Level ($AL$) & 25\% & Daily step count and weekly active minutes. $\geq$12,000 steps/day or $\geq$300 active minutes/week scores highest. \\
+BMI ($B$)             & 15\% & Body mass index scoring. Normal range (18.5--24.9) scores highest. \\
+Blood Oxygen ($O$)    & 15\% & SpO\textsubscript{2} levels from wearable. $\geq$98\% scores 100; $<$93\% indicates potential respiratory concern. \\
+Sleep Quality ($SL$)  & 15\% & Sleep duration (optimal 7--9 hours/night) and sleep stage distribution. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Both scores are displayed on the dashboard with expandable breakdowns showing individual factor contributions, enabling users to understand which aspects of their health profile most affect their pollution resilience.
+
+\section{General Population Sustainability Index (GPSI)}
+
+The GPSI provides a city-level sustainability score (0--100) combining three dimensions:
+
+\begin{equation}
+  GPSI = 0.40 \cdot E_{env} + 0.30 \cdot E_{health} + 0.30 \cdot E_{infra}
+  \label{eq:gpsi}
+\end{equation}
+
+\begin{itemize}[leftmargin=*]
+  \item $E_{env}$ (\textbf{Environmental}, 40\%): Derived from average PM\textsubscript{2.5} concentration levels, AQI trend direction (improving, stable, or worsening based on linear regression), and a sustainability score reflecting long-term air quality trajectory.
+
+  \item $E_{health}$ (\textbf{Health}, 30\%): Based on respiratory disease prevalence, air-pollution-related mortality rate, and life expectancy. Data is curated from the WHO Global Health Observatory and India's National Health Profile 2022 for 10 Indian cities: Delhi, Mumbai, Pune, Bangalore, Chennai, Kolkata, Hyderabad, Ahmedabad, Jaipur, and Lucknow.
+
+  \item $E_{infra}$ (\textbf{Infrastructure}, 30\%): Green cover percentage, healthcare facility density per 100,000 population, public transport availability score, and an industrial density penalty.
+\end{itemize}
+
+The system estimates a city average resilience score from population health statistics and compares it with the user's personal resilience score, generating percentile rankings and contextual insights (e.g., ``Your fitness level places you in the top 20\% for pollution resilience in this city'').
+
+\section{Travel Advisory System}
+
+The travel advisory module compares air quality conditions between an origin and destination city, accounting for the user's health vulnerability:
+
+\begin{enumerate}[leftmargin=*]
+  \item The AQI difference between destination and origin is computed. A change exceeding $\pm$20 is classified as ``better'' or ``worse.''
+  \item The destination AQI is multiplied by the user's health vulnerability to compute an \textit{effective AQI} for that individual.
+  \item Advisory levels are assigned based on effective AQI thresholds: Safe ($<$150), Caution (150--200), Warning (200--300), or Danger ($>$300).
+  \item A preparations checklist is generated based on the advisory level, including mask recommendations, purifier suggestions, and medication reminders for users with respiratory conditions.
+  \item Product-based travel kit recommendations are attached, filtered for portability.
+\end{enumerate}
+
+\section{Data Flow}
+
+\textbf{Dashboard Load:} When the user opens the dashboard, the system fetches real-time AQI from the WAQI API (with local caching to respect rate limits), retrieves the user's health profile for vulnerability computation, pulls the latest activity data from Fitbit, and runs the exposure calculator with hourly granularity. In parallel, it computes resilience and fitness scores, fetches the GPSI for the selected city, and generates a SARIMA forecast. All results are rendered in a unified dashboard view.
+
+\textbf{Recommendation Flow:} The recommendations module collects seven contextual inputs (current AQI, personal exposure score, time of day, planned activity, forecast trend, health vulnerability, and fitness level). These are submitted to the analytics microservice, which evaluates 45+ fuzzy rules and applies centroid defuzzification. The resulting six crisp output values are mapped to actionable labels (e.g., mask value 77.8 $\rightarrow$ ``KN95 Required'') and returned with natural-language reasoning strings. If the analytics service is unreachable, the rule-based fallback activates seamlessly.
+
+
+% ============================================================
+% Chapter 7: Hardware/Software Requirements
+% ============================================================
+\chapter{Hardware and Software Requirements}
+
+\section{Hardware Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Minimum Hardware Requirements}
+\label{tab:hardware}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+Processor       & Intel Core i5 / AMD Ryzen 5 or equivalent \\
+RAM             & 8 GB minimum (16 GB recommended) \\
+Storage         & 500 MB free disk space \\
+Network         & Stable internet connection (required for API access) \\
+Display         & 1366$\times$768 minimum resolution \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Optional:} Fitbit wearable device (any model supporting heart rate, SpO\textsubscript{2}, and sleep tracking) for real-time physiological data integration.
+
+\section{Software Requirements}
+
+\begin{table}[H]
+\centering
+\caption{Software Technology Stack}
+\label{tab:software}
+\begin{tabularx}{\textwidth}{llX}
+\toprule
+\textbf{Component} & \textbf{Technology} & \textbf{Purpose} \\
+\midrule
+\multicolumn{3}{l}{\textit{Frontend}} \\
+\midrule
+Web Framework    & Next.js 16 (React 19)  & Server-side rendering, API routes, App Router \\
+Language         & TypeScript 5           & Type-safe application logic \\
+Styling          & Tailwind CSS v4        & Responsive UI design \\
+Animations       & Framer Motion          & Smooth transitions and micro-interactions \\
+Charts           & Recharts               & Data visualization (exposure trends, forecasts) \\
+Maps             & Leaflet + react-leaflet & Interactive AQI map visualization \\
+\midrule
+\multicolumn{3}{l}{\textit{Backend}} \\
+\midrule
+API Layer        & Next.js API Routes     & RESTful backend services \\
+Database         & SQLite via Prisma ORM  & Local data persistence with type-safe access \\
+\midrule
+\multicolumn{3}{l}{\textit{Analytics Microservice}} \\
+\midrule
+Framework        & Python FastAPI         & High-performance async API \\
+Forecasting      & pmdarima \cite{pmdarima2024} & Auto-ARIMA/SARIMA model selection \\
+Fuzzy Logic      & scikit-fuzzy \cite{scikitfuzzy2019} & Mamdani FIS with centroid defuzzification \\
+Numerical        & NumPy                  & Array operations and statistical computation \\
+\midrule
+\multicolumn{3}{l}{\textit{External Data Sources}} \\
+\midrule
+Real-time AQI    & WAQI API               & Current air quality data (API key required) \\
+Historical AQI   & OpenWeatherMap API     & 6--8 year pollution history (API key required) \\
+Fallback AQI     & Open-Meteo API         & Free historical air quality data \\
+Geocoding        & Nominatim (OSM)        & City search and reverse geocoding (free) \\
+Wearable Data    & Fitbit Web API         & Heart rate, SpO\textsubscript{2}, sleep, activity (OAuth2) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Operating System Compatibility}
+
+The application is platform-independent and can be deployed on macOS 12+, Windows 10/11, or Ubuntu 20.04+.
+
+
+% ============================================================
+% Chapter 8: Conclusion
+% ============================================================
+\chapter{Conclusion}
+
+\section{Summary}
+
+This project presents AirSense, a personalized air quality exposure tracker that addresses the fundamental gap between generic environmental monitoring data and individual health risk management. By integrating real-time AQI data, 6--8 years of historical pollution records, Fitbit wearable physiological data, and comprehensive health profiling with 7 respiratory conditions, AirSense computes truly personalized exposure scores that account for individual health vulnerabilities, indoor/outdoor environments, and activity-based breathing rates.
+
+The system demonstrates the practical application of two computational intelligence techniques in a real-world health informatics context:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{SARIMA Time-Series Forecasting:} Applied to monthly AQI data with seasonal period $m=12$, enabling users to anticipate future air quality conditions with 95\% confidence intervals. Automated parameter selection eliminates manual model tuning, making the system scalable across cities with varying data availability.
+
+  \item \textbf{Mamdani-Type Fuzzy Inference System:} A 7-input, 6-output fuzzy engine with 45+ rules generates nuanced, multi-dimensional health recommendations that surpass the binary ``safe/unsafe'' labels of existing tools. The fuzzy approach handles the inherent imprecision in health-environment interactions more appropriately than rigid threshold-based systems, producing actionable guidance on mask selection, exercise modification, ventilation, and medical alerting simultaneously.
+\end{enumerate}
+
+The Resilience Score, Fitness Score, and GPSI provide users with a quantitative understanding of their personal pollution tolerance relative to their city's population, while the Travel Advisory System extends this intelligence to inter-city movement planning.
+
+The three-tier architecture---web frontend, backend API layer, and dedicated analytics microservice---demonstrates effective separation of concerns, with the fuzzy recommendation system gracefully degrading to a rule-based fallback when the analytics service is unavailable, ensuring uninterrupted user experience.
+
+\section{Key Contributions}
+
+\begin{enumerate}[leftmargin=*]
+  \item A health vulnerability multiplier (1.0$\times$--3.0$\times$) grounded in EPA/WHO guidelines that transforms generic AQI into personalized exposure scores, accounting for 7 respiratory conditions, cardiovascular health, age, smoking, and pregnancy.
+
+  \item Integration of real-time wearable physiological data (heart rate, SpO\textsubscript{2}, activity patterns, sleep quality) from Fitbit into environmental health assessment, enabling continuous personalization based on the user's current physiological state.
+
+  \item A comprehensive fuzzy inference system producing six simultaneous health recommendation outputs from seven contextual inputs, with automatic fallback to ensure service continuity.
+
+  \item An exposure calculation model accounting for 8 distinct indoor/outdoor environment types with empirically grounded filtration factors and 7 activity types with breathing-rate multipliers.
+
+  \item City-agnostic design with a historical data pipeline supporting 6--8 years of real AQI data, trend analysis, and sustainability scoring for long-term health and environmental decision-making.
+\end{enumerate}
+
+\section{Limitations}
+
+\begin{enumerate}[leftmargin=*]
+  \item Wearable integration is currently limited to Fitbit; support for Apple HealthKit, Google Health Connect, and Garmin Connect would significantly broaden accessibility.
+  \item SARIMA forecast accuracy depends on the completeness of historical data; cities with sparse monitoring infrastructure produce less reliable predictions.
+  \item The health vulnerability multipliers, while grounded in published EPA/WHO guidelines, have not been independently validated through controlled epidemiological studies.
+  \item The GPSI uses curated data for 10 Indian cities; expanding globally requires integration with additional national health databases.
+  \item The system provides health \textit{guidance}, not medical \textit{diagnosis}; users with serious conditions should consult healthcare professionals.
+\end{enumerate}
+
+\section{Future Work}
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Deep Learning Forecasting:} Supplementing SARIMA with LSTM or Transformer-based models for improved non-linear pattern capture.
+  \item \textbf{Multi-Wearable Support:} Extending integration to Apple HealthKit, Google Health Connect, and Garmin Connect APIs.
+  \item \textbf{Community Health Features:} Crowdsourced AQI reporting and anonymized population-level exposure analytics.
+  \item \textbf{Clinical Validation:} Collaborating with healthcare institutions to validate vulnerability multipliers against patient outcome data.
+  \item \textbf{Native Mobile Applications:} iOS and Android apps with push notifications for real-time AQI alerts and location-triggered recommendations.
+  \item \textbf{Policy Dashboard:} A module for municipal authorities and public health agencies to monitor population-level exposure patterns and evaluate intervention effectiveness.
+\end{enumerate}
+
+
+% ============================================================
+% Chapter 9: References
+% ============================================================
+\renewcommand{\bibname}{References}
+\begin{thebibliography}{99}
+
+\bibitem{WHO2014airpollution}
+World Health Organization,
+``7 Million Premature Deaths Annually Linked to Air Pollution,''
+WHO Press Release, March 2014.
+\url{https://www.who.int/news/item/25-03-2014-7-million-premature-deaths-annually-linked-to-air-pollution}
+
+\bibitem{WHO2021aqg}
+World Health Organization,
+\textit{WHO Global Air Quality Guidelines: Particulate Matter (PM2.5 and PM10), Ozone, Nitrogen Dioxide, Sulfur Dioxide and Carbon Monoxide},
+Geneva: WHO, 2021. ISBN: 978-92-4-003422-8.
+
+\bibitem{EPA2024aqitechnical}
+U.S. Environmental Protection Agency,
+``Technical Assistance Document for the Reporting of Daily Air Quality --- the Air Quality Index (AQI),''
+EPA 454/B-18-007, Revised 2024.
+\url{https://document.airnow.gov/technical-assistance-document-for-the-reporting-of-daily-air-quailty.pdf}
+
+\bibitem{EPA2024healtheffects}
+U.S. Environmental Protection Agency,
+``Research on Health Effects from Air Pollution,''
+2024. \url{https://www.epa.gov/air-research/research-health-effects-air-pollution}
+
+\bibitem{CFR40appendixG}
+U.S. Government,
+``40 CFR Appendix G to Part 58 --- Uniform Air Quality Index (AQI) and Daily Reporting,''
+\url{https://www.law.cornell.edu/cfr/text/40/appendix-G_to_part_58}
+
+\bibitem{CPCB2014naqi}
+Central Pollution Control Board,
+``National Air Quality Index (AQI),''
+Ministry of Environment, Forest and Climate Change, Government of India, 2014.
+\url{https://cpcb.nic.in/National-Air-Quality-Index/}
+
+\bibitem{Kumar2011forecasting}
+A.~Kumar and P.~Goyal,
+``Forecasting of Daily Air Quality Index in Delhi,''
+\textit{Science of The Total Environment}, vol.~409, no.~24, pp.~5517--5523, 2011.
+DOI: \href{https://doi.org/10.1016/j.scitotenv.2011.08.069}{10.1016/j.scitotenv.2011.08.069}
+
+\bibitem{Samal2019sarima}
+K.K.R.~Samal, K.S.~Babu, S.K.~Das, and A.~Acharya,
+``Time Series Based Air Pollution Forecasting Using SARIMA and Prophet Model,''
+\textit{Proc.\ 2019 Int.\ Conf.\ on Information Technology and Computer Communications}, pp.~80--85, 2019.
+DOI: \href{https://doi.org/10.1145/3355402.3355417}{10.1145/3355402.3355417}
+
+\bibitem{Kaur2023autoregressive}
+J.~Kaur, K.S.~Parmar, and S.~Singh,
+``Autoregressive Models in Environmental Forecasting Time Series: A Theoretical and Application Review,''
+\textit{Environmental Science and Pollution Research}, vol.~30, pp.~19617--19641, 2023.
+DOI: \href{https://doi.org/10.1007/s11356-023-25148-9}{10.1007/s11356-023-25148-9}
+
+\bibitem{Sowlat2011faqi}
+M.H.~Sowlat, H.~Gharibi, M.~Yunesian, M.T.~Mahmoudi, and S.~Lotfi,
+``A Novel, Fuzzy-Based Air Quality Index (FAQI) for Air Quality Assessment,''
+\textit{Atmospheric Environment}, vol.~45, pp.~2050--2059, 2011.
+DOI: \href{https://doi.org/10.1016/j.atmosenv.2011.01.060}{10.1016/j.atmosenv.2011.01.060}
+
+\bibitem{OlveraGarcia2016weighted}
+M.A.~Olvera-Garc\'{i}a, J.J.~Carbajal-Hern\'{a}ndez, L.P.~S\'{a}nchez-Fern\'{a}ndez, and I.~Hern\'{a}ndez-Bautista,
+``Air Quality Assessment Using a Weighted Fuzzy Inference System,''
+\textit{Ecological Informatics}, vol.~33, pp.~57--74, 2016.
+DOI: \href{https://doi.org/10.1016/j.ecoinf.2016.04.005}{10.1016/j.ecoinf.2016.04.005}
+
+\bibitem{Dionova2020indoor}
+B.W.~Dionova, M.N.~Mohammed, S.~Al-Zubaidi, and E.~Yusuf,
+``Environment Indoor Air Quality Assessment Using Fuzzy Inference System,''
+\textit{ICT Express}, vol.~6, no.~3, pp.~185--194, 2020.
+DOI: \href{https://doi.org/10.1016/j.icte.2020.05.007}{10.1016/j.icte.2020.05.007}
+
+\bibitem{Jo2020iot}
+J.~Jo, B.~Jo, J.~Kim, S.~Kim, and W.~Han,
+``Development of an IoT-Based Indoor Air Quality Monitoring Platform,''
+\textit{Journal of Sensors}, vol.~2020, p.~8749764, 2020.
+DOI: \href{https://doi.org/10.1155/2020/8749764}{10.1155/2020/8749764}
+
+\bibitem{Sung2021iot}
+W.-T.~Sung and S.-J.~Hsiao,
+``Building an Indoor Air Quality Monitoring System Based on the Architecture of the Internet of Things,''
+\textit{EURASIP Journal on Wireless Communications and Networking}, vol.~2021, p.~153, 2021.
+DOI: \href{https://doi.org/10.1186/s13638-021-02030-1}{10.1186/s13638-021-02030-1}
+
+\bibitem{He2021iot}
+X.~He, M.~Lin, T.-L.~Chen, B.-J.~Lue, P.-C.~Tseng, W.~Cao, and P.-C.~Chiang,
+``Development of IoT Technologies for Air Pollution Prevention and Improvement,''
+\textit{Aerosol and Air Quality Research}, vol.~21, no.~4, p.~200255, 2021.
+DOI: \href{https://doi.org/10.4209/aaqr.2020.05.0255}{10.4209/aaqr.2020.05.0255}
+
+\bibitem{Bernasconi2022wearables}
+S.~Bernasconi, A.~Angelucci, and A.~Aliverti,
+``A Scoping Review on Wearable Devices for Environmental Monitoring and Their Application for Health and Wellness,''
+\textit{Sensors}, vol.~22, no.~16, p.~5994, 2022.
+DOI: \href{https://doi.org/10.3390/s22165994}{10.3390/s22165994}
+
+\bibitem{Steinle2013exposure}
+S.~Steinle, S.~Reis, and C.E.~Sabel,
+``Quantifying Human Exposure to Air Pollution --- Moving from Static Monitoring to Spatio-Temporally Resolved Personal Exposure Assessment,''
+\textit{Science of The Total Environment}, vol.~443, pp.~184--193, 2013.
+DOI: \href{https://doi.org/10.1016/j.scitotenv.2012.10.098}{10.1016/j.scitotenv.2012.10.098}
+
+\bibitem{Rappaport2010exposome}
+S.M.~Rappaport and M.T.~Smith,
+``Environment and Disease Risks,''
+\textit{Science}, vol.~330, no.~6003, pp.~460--461, 2010.
+DOI: \href{https://doi.org/10.1126/science.1192603}{10.1126/science.1192603}
+
+\bibitem{Nieuwenhuijsen2019exposure}
+M.J.~Nieuwenhuijsen et al.,
+``Advancing Environmental Exposure Assessment Science to Benefit Society,''
+\textit{Nature Communications}, vol.~10, p.~1236, 2019.
+DOI: \href{https://doi.org/10.1038/s41467-019-09155-4}{10.1038/s41467-019-09155-4}
+
+\bibitem{Hyndman2008forecast}
+R.J.~Hyndman and Y.~Khandakar,
+``Automatic Time Series Forecasting: The forecast Package for R,''
+\textit{Journal of Statistical Software}, vol.~27, no.~3, pp.~1--22, 2008.
+DOI: \href{https://doi.org/10.18637/jss.v027.i03}{10.18637/jss.v027.i03}
+
+\bibitem{pmdarima2024}
+T.G.~Smith,
+``pmdarima: ARIMA Estimators for Python,''
+2024. \url{http://alkaline-ml.com/pmdarima/}
+
+\bibitem{scikitfuzzy2019}
+J.~Warner, J.~Sexauer, and scikit-fuzzy contributors,
+``scikit-fuzzy: Fuzzy Logic Toolkit for SciPy,''
+2019. \url{https://github.com/scikit-fuzzy/scikit-fuzzy}
+
+\bibitem{Leaflet2024}
+V.~Agafonkin,
+``Leaflet: An Open-Source JavaScript Library for Mobile-Friendly Interactive Maps,''
+2024. \url{https://leafletjs.com/}
+
+\bibitem{Bhatia2018webgis}
+T.S.~Bhatia, H.~Singh, P.K.~Litoria, and B.~Pateriya,
+``Web GIS Development Using Open Source Leaflet and Geoserver Toolkit,''
+\textit{International Journal of Computer Science and Technology}, vol.~9, no.~3, 2018.
+
+\bibitem{CPCB2024realtime}
+Central Pollution Control Board,
+``Central Control Room for Air Quality Management,''
+2024. \url{https://airquality.cpcb.gov.in/ccr/}
+
+\end{thebibliography}
+
+\end{document}

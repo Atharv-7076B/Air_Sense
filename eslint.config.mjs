@@ -13,6 +13,19 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Allow setState in useEffect for data fetching patterns
+      "react-hooks/set-state-in-effect": "off",
+      // Allow impure functions in render for demo purposes
+      "react-hooks/purity": "off",
+      // Allow unused vars with underscore prefix
+      "@typescript-eslint/no-unused-vars": ["warn", { 
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_" 
+      }],
+    },
+  },
 ]);
 
 export default eslintConfig;

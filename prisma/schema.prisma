@@ -1,0 +1,236 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String        @default("User")
+  city         String        @default("Mumbai")
+  homeType     String        @default("apartment") // apartment, house
+  hasAC        Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  activityLogs    ActivityLog[]
+  exposureLogs    ExposureLog[]
+  fitbitConnection FitbitConnection?
+  healthProfile    HealthProfile?
+}
+
+model HealthProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+
+  // Basic info
+  age                   Int?
+  gender                String?  // male, female, other
+  weight                Float?   // kg
+  height                Float?   // cm
+  bmi                   Float?   // auto-calculated
+  smokingStatus         String   @default("never") // never, former, current
+
+  // Respiratory conditions (boolean + severity)
+  asthma                Boolean  @default(false)
+  asthmaSeverity        String?  // mild, moderate, severe
+  copd                  Boolean  @default(false)
+  copdSeverity          String?
+  bronchitis            Boolean  @default(false)
+  bronchitisSeverity    String?
+  pneumonia             Boolean  @default(false)
+  pneumoniaSeverity     String?
+  tuberculosis          Boolean  @default(false)
+  tuberculosisSeverity  String?
+  allergicRhinitis      Boolean  @default(false)
+  allergicRhinitisSeverity String?
+  sinusitis             Boolean  @default(false)
+  sinusitisSeverity     String?
+
+  // Other conditions
+  cardiovascularDisease Boolean  @default(false)
+  cardiovascularSeverity String?
+  diabetes              Boolean  @default(false)
+  diabetesSeverity      String?
+  immunocompromised     Boolean  @default(false)
+  pregnancy             Boolean  @default(false)
+
+  // Duration of chronic conditions (years)
+  asthmaDuration        Int?
+  copdDuration          Int?
+  bronchitisDuration    Int?
+
+  // Lifestyle factors (for resilience score - Phase 5)
+  exerciseFrequency     String?  // sedentary, light, moderate, active, very_active
+  dietQuality           String?  // poor, fair, good, excellent
+  yearsInCurrentCity    Int?
+
+  // Additional
+  currentMedications    String?  // free text
+  familyRespiratoryHistory Boolean @default(false)
+  additionalConditions  String?  // JSON string for extra conditions
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id           String   @id @default(cuid())
+  userId       String
+  timestamp    DateTime @default(now())
+  activityType String   // resting, walking, running, cycling, sleeping
+  heartRate    Int?
+  steps        Int?
+  calories     Float?
+  isIndoor     Boolean  @default(true)
+  location     String?  // home, office, gym, outdoor, commute
+  duration     Int      @default(60) // duration in minutes
+  source       String   @default("simulator") // apple_watch, noise_band, simulator
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model ExposureLog {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @default(now())
+  baseAQI         Int
+  personalScore   Float
+  indoorPercent   Float
+  avgActivityLevel Float
+  avgHeartRate    Float?
+  totalSteps      Int?
+  riskCategory    String   // low, moderate, high, very_high
+  recommendations String?  // JSON string for recommendations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+}
+
+model FitbitConnection {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  fitbitUserId String
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  scopes       String   // space-delimited scopes granted
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AQICache {
+  id          String   @id @default(cuid())
+  city        String   @unique
+  aqi         Int
+  pm25        Float?
+  pm10        Float?
+  o3          Float?
+  no2         Float?
+  so2         Float?
+  co          Float?
+  temperature Float?
+  humidity    Float?
+  wind        Float?
+  source      String   @default("waqi")
+  updatedAt   DateTime @updatedAt
+}
+
+model HistoricalAQI {
+  id        String   @id @default(cuid())
+  city      String
+  lat       Float
+  lon       Float
+  date      DateTime
+  pm25      Float?
+  pm10      Float?
+  o3        Float?
+  no2       Float?
+  so2       Float?
+  co        Float?
+  aqi       Float?
+  source    String   // openweathermap, openmeteo
+  period    String   // monthly, weekly, daily
+
+  @@unique([city, date, period])
+  @@index([city])
+  @@index([date])
+}
+
+model CityData {
+  id                    String   @id @default(cuid())
+  city                  String   @unique
+  lat                   Float
+  lon                   Float
+  country               String?
+  state                 String?
+
+  // Population health stats (WHO/government data)
+  respiratoryPrevalence Float?   // % of population
+  mortalityRate         Float?   // per 100k
+  lifeExpectancy        Float?
+
+  // Infrastructure
+  greenCoverPercent     Float?
+  healthcareDensity     Float?   // facilities per 100k
+  publicTransportScore  Float?   // 0-100
+
+  // Computed
+  gpsiScore             Float?   // General Population Sustainability Index
+  dataSource            String?  // who, government, estimated
+
+  updatedAt             DateTime @updatedAt
+}
+
+model TravelAdvisory {
+  id              String   @id @default(cuid())
+  userId          String
+  originCity      String
+  destinationCity String
+  travelDate      DateTime
+  returnDate      DateTime?
+  originAQI       Float?
+  destinationAQI  Float?
+  advisoryLevel   String?  // safe, caution, warning, danger
+  recommendations String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+}
+
+model ProductRecommendation {
+  id            String   @id @default(cuid())
+  name          String
+  category      String   // air_purifier, mask, monitor, supplement, insurance
+  brand         String?
+  model         String?
+  description   String?
+  priceRange    String?
+  specifications String? // JSON
+  affiliateUrl  String?
+  imageUrl      String?
+  rating        Float?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model RecommendationClick {
+  id              String   @id @default(cuid())
+  productId       String
+  userId          String?
+  source          String?  // dashboard, recommendations, travel
+  createdAt       DateTime @default(now())
+
+  @@index([productId])
+}

@@ -1,0 +1,41 @@
+ExposureTracker - Personalized Air Quality Exposure Intelligence Platform
+
+THE PROBLEM
+
+Over 90% of the world's population breathes polluted air, yet every air quality app shows the same single number for an entire city. A construction worker outdoors, an asthmatic child walking to school, and a healthy adult in an air-conditioned office all see the same AQI. This is misleading and potentially dangerous -- their actual pollution intake varies by 3-5x depending on where they are, what they're doing, and what health conditions they carry. People either over-panic or dangerously ignore air quality because the information isn't relevant to them.
+
+OUR SOLUTION
+
+ExposureTracker computes a personalized exposure score -- what you actually breathe, not just what's in the ambient air. It combines real-time air quality data, your actual activity patterns from connected wearables (Fitbit), your medical health profile, and your environment (indoor/outdoor, AC, location type) to produce a score that reflects your real pollution intake throughout the day.
+
+A Mumbai office worker with AC sees their personal exposure at 45 against a city AQI of 145. That 60% reduction is real -- and knowing it prevents unnecessary anxiety. Meanwhile, someone with COPD exercising outdoors in the same city sees their exposure amplified to 190 with specific protective recommendations. Same city, same air, completely different health reality.
+
+WHAT IT DELIVERS
+
+Personalized Exposure Score -- A 0-300 score computed from your actual indoor/outdoor split, activity intensity (running means 3x more inhalation than resting), location factors, and health vulnerability. Broken down by hour so you can see exactly when your exposure peaks.
+
+Health-Aware Intelligence -- The app knows your medical history. 11 conditions tracked with severity levels -- asthma, COPD, bronchitis, cardiovascular disease, diabetes, pregnancy, and more. A severe asthmatic gets fundamentally different risk assessments and recommendations than a healthy athlete in identical air quality.
+
+Wearable-Driven Accuracy -- Connects to Fitbit to use your real steps, heart rate, sleep, blood oxygen, and activity timeline. Your exposure is calculated from what you actually did today, not generic assumptions.
+
+Smart Recommendations -- Instead of generic "stay indoors" alerts, the app provides six specific outputs: outdoor safety level, exact mask type needed (N95 vs surgical vs none), air purifier urgency, how to modify your exercise, ventilation advice, and medical alert level. Each recommendation comes with a plain-language explanation of why.
+
+Predictive Forecasting -- 6-month air quality forecasts trained on 6-8 years of real historical pollution data, so you can plan ahead rather than react to today's number.
+
+Travel Health Planning -- Compare air quality between cities before you travel, get personalized advisory levels based on your health profile, and receive destination-specific preparation checklists.
+
+City Sustainability Tracking -- Long-term analysis of your city's air quality trajectory using years of real data, comparing environmental quality, public health outcomes, and infrastructure readiness.
+
+WHO BENEFITS
+
+Individuals with respiratory conditions who need to know their actual risk, not a generic city number. Parents making decisions about children's outdoor activities. Fitness enthusiasts who want to exercise safely without avoiding the outdoors unnecessarily. Elderly populations with heightened pollution sensitivity. Corporate wellness programs providing employees with personalized environmental health insights. Urban planners and public health officials tracking city-level sustainability over time.
+
+MARKET OPPORTUNITY
+
+The global air quality monitoring market is projected to reach $7.5 billion by 2030. Existing solutions are hardware-centric (sensors) or provide generic city-level data. No major platform personalizes exposure based on health profile and wearable activity data. ExposureTracker fills this gap with a software-first approach that works with existing infrastructure and consumer wearables.
+
+Monetization paths include premium health insights for individual subscribers, B2B wellness program licensing for employers, health-contextual product recommendations (air purifiers, masks, supplements), anonymized population health analytics for insurers and pharmaceutical companies, and API licensing to fitness and health platforms seeking air quality personalization.
+
+IMPACT
+
+ExposureTracker turns air quality from a passive, one-size-fits-all number into an active, personal health tool. It reduces unnecessary health anxiety for low-risk individuals while providing critical early warnings for vulnerable populations. By making pollution exposure personal and actionable, it empowers better daily decisions -- when to exercise, which route to take, whether to open windows, when to see a doctor -- grounded in what each person actually breathes.
