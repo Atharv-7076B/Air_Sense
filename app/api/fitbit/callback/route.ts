@@ -11,7 +11,13 @@ export async function GET(request: Request) {
     const error = searchParams.get("error");
 
     if (error) {
-      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+      const baseUrl = process.env.NEXTAUTH_URL;
+      if (!baseUrl) {
+        return NextResponse.json(
+          { error: "NEXTAUTH_URL is not configured" },
+          { status: 500 },
+        );
+      }
       return NextResponse.redirect(`${baseUrl}/settings?fitbit=denied`);
     }
 
@@ -77,11 +83,27 @@ export async function GET(request: Request) {
     cookieStore.delete("fitbit_code_verifier");
     cookieStore.delete("fitbit_state");
 
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      return NextResponse.json(
+        { error: "NEXTAUTH_URL is not configured" },
+        { status: 500 },
+      );
+    }
+    console.log(
+      "[Fitbit OAuth] Successfully connected. Redirecting to:",
+      `${baseUrl}/settings?fitbit=connected`,
+    );
     return NextResponse.redirect(`${baseUrl}/settings?fitbit=connected`);
   } catch (error) {
-    console.error("Fitbit callback error:", error);
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    console.error("[Fitbit OAuth] Callback error:", error);
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      return NextResponse.json(
+        { error: "NEXTAUTH_URL is not configured" },
+        { status: 500 },
+      );
+    }
     return NextResponse.redirect(`${baseUrl}/settings?fitbit=error`);
   }
 }
