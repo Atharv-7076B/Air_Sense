@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { timingSafeEqual } from "crypto";
 import { exchangeCodeForTokens } from "@/lib/fitbit-client";
 import { prisma } from "@/lib/prisma";
+
+function safeCompareState(returnedState: string, storedState: string): boolean {
+  const returnedBuffer = Buffer.from(returnedState, "utf8");
+  const storedBuffer = Buffer.from(storedState, "utf8");
+
+  if (returnedBuffer.length !== storedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(returnedBuffer, storedBuffer);
+}
 
 function getAppBaseURL(): string {
   const baseUrl = process.env.NEXTAUTH_URL?.trim();
@@ -15,14 +27,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
-    const state = searchParams.get("state");
+    const returnedState = searchParams.get("state");
     const error = searchParams.get("error");
 
     if (error) {
       return NextResponse.redirect(`${getAppBaseURL()}/settings?fitbit=denied`);
     }
 
-    if (!code || !state) {
+    if (!code || !returnedState) {
       return NextResponse.json(
         { error: "Missing code or state parameter" },
         { status: 400 },
@@ -31,10 +43,13 @@ export async function GET(request: Request) {
 
     // Verify state and get code verifier from cookies
     const cookieStore = await cookies();
-    const savedState = cookieStore.get("fitbit_state")?.value;
+    const storedState = cookieStore.get("fitbit_state")?.value;
     const codeVerifier = cookieStore.get("fitbit_code_verifier")?.value;
 
-    if (!savedState || savedState !== state) {
+    console.log("Returned state:", returnedState);
+    console.log("Stored state:", storedState);
+
+    if (!storedState || !safeCompareState(returnedState, storedState)) {
       return NextResponse.json(
         { error: "Invalid state parameter - possible CSRF attack" },
         { status: 403 },

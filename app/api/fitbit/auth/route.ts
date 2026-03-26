@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { randomUUID } from "crypto";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
-  generateState,
   getFitbitAuthURL,
 } from "@/lib/fitbit-client";
 
@@ -32,20 +32,20 @@ export async function GET() {
 
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = generateCodeChallenge(codeVerifier);
-    const state = generateState();
+    const state = randomUUID();
 
     // Store PKCE verifier and state in cookies for the callback
     const cookieStore = await cookies();
     cookieStore.set("fitbit_code_verifier", codeVerifier, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       maxAge: 600, // 10 minutes
       path: "/",
     });
     cookieStore.set("fitbit_state", state, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "lax",
       maxAge: 600,
       path: "/",
