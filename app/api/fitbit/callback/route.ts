@@ -1,21 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { timingSafeEqual } from "crypto";
 import { exchangeCodeForTokens } from "@/lib/fitbit-client";
 import { prisma } from "@/lib/prisma";
-
-export const dynamic = "force-dynamic";
-
-function safeCompareState(returnedState: string, storedState: string): boolean {
-  const returnedBuffer = Buffer.from(returnedState, "utf8");
-  const storedBuffer = Buffer.from(storedState, "utf8");
-
-  if (returnedBuffer.length !== storedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(returnedBuffer, storedBuffer);
-}
 
 function getAppBaseURL(): string {
   const baseUrl = process.env.NEXTAUTH_URL?.trim();
@@ -25,69 +11,41 @@ function getAppBaseURL(): string {
   return baseUrl.replace(/\/+$/, "");
 }
 
-function getFitbitAuthRestartURL(request: Request): string {
-  const requestUrl = new URL(request.url);
-  return `${requestUrl.origin}/api/fitbit/auth`;
-}
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    console.log("[Fitbit Callback] Request host:", new URL(request.url).host);
     const code = searchParams.get("code");
-    const returnedState = searchParams.get("state");
+    const state = searchParams.get("state");
     const error = searchParams.get("error");
 
     if (error) {
       return NextResponse.redirect(`${getAppBaseURL()}/settings?fitbit=denied`);
     }
 
-    if (!code || !returnedState) {
-      return NextResponse.redirect(getFitbitAuthRestartURL(request));
+    if (!code || !state) {
+      return NextResponse.json(
+        { error: "Missing code or state parameter" },
+        { status: 400 },
+      );
     }
 
-    // Verify state and get code verifier from cookie-based OAuth context
+    // Verify state and get code verifier from cookies
     const cookieStore = await cookies();
-    const encodedOAuthContext = cookieStore.get("fitbit_oauth_ctx")?.value;
+    const savedState = cookieStore.get("fitbit_state")?.value;
+    const codeVerifier = cookieStore.get("fitbit_code_verifier")?.value;
 
-    let storedState: string | undefined;
-    let codeVerifier: string | undefined;
-
-    if (encodedOAuthContext) {
-      try {
-        const decoded = Buffer.from(encodedOAuthContext, "base64url").toString("utf8");
-        const parsed = JSON.parse(decoded) as {
-          state?: string;
-          codeVerifier?: string;
-        };
-        storedState = parsed.state;
-        codeVerifier = parsed.codeVerifier;
-      } catch (parseError) {
-        console.error("[Fitbit Callback] Invalid OAuth context cookie:", parseError);
-      }
+    if (!savedState || savedState !== state) {
+      return NextResponse.json(
+        { error: "Invalid state parameter - possible CSRF attack" },
+        { status: 403 },
+      );
     }
-
-    console.log("Returned state:", returnedState);
-    console.log("Stored state:", storedState);
-    console.log(
-      "[Fitbit Callback] State cookie present:",
-      Boolean(storedState),
-    );
-    console.log(
-      "[Fitbit Callback] PKCE verifier cookie present:",
-      Boolean(codeVerifier),
-    );
-
-    if (!storedState || !safeCompareState(returnedState, storedState)) {
-      cookieStore.delete("fitbit_oauth_ctx");
-      return NextResponse.redirect(getFitbitAuthRestartURL(request));
-    }
-
-    // State is single-use; clear it immediately after successful validation.
-    cookieStore.delete("fitbit_oauth_ctx");
 
     if (!codeVerifier) {
-      return NextResponse.redirect(getFitbitAuthRestartURL(request));
+      return NextResponse.json(
+        { error: "Missing code verifier - please try again" },
+        { status: 400 },
+      );
     }
 
     // Exchange code for tokens
@@ -122,18 +80,18 @@ export async function GET(request: Request) {
       },
     });
 
-    // Clear OAuth context cookie after successful token exchange
-    cookieStore.delete("fitbit_oauth_ctx");
+    // Clear OAuth cookies
+    cookieStore.delete("fitbit_code_verifier");
+    cookieStore.delete("fitbit_state");
 
-    return NextResponse.redirect(
-      `${getAppBaseURL()}/settings?fitbit=connected`,
-    );
+    return NextResponse.redirect(`${getAppBaseURL()}/settings?fitbit=connected`);
   } catch (error) {
     console.error("[Fitbit OAuth] Callback error:", error);
 
     try {
       const cookieStore = await cookies();
-      cookieStore.delete("fitbit_oauth_ctx");
+      cookieStore.delete("fitbit_code_verifier");
+      cookieStore.delete("fitbit_state");
     } catch {
       // Ignore cleanup errors; we still want to return a deterministic response.
     }

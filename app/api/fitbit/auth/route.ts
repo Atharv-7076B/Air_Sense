@@ -1,92 +1,63 @@
-import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import {
   generateCodeVerifier,
   generateCodeChallenge,
+  generateState,
   getFitbitAuthURL,
-} from "@/lib/fitbit-client";
+} from '@/lib/fitbit-client'
 
-export const dynamic = "force-dynamic";
-
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    console.log("[Fitbit Auth] Starting OAuth flow...");
-    console.log("[Fitbit Auth] NEXTAUTH_URL:", process.env.NEXTAUTH_URL);
-    console.log("[Fitbit Auth] NODE_ENV:", process.env.NODE_ENV);
-
-    const requestUrl = new URL(request.url);
-
-    const requestHost = requestUrl.host;
-    const redirectUri = process.env.FITBIT_REDIRECT_URI?.trim();
-    const redirectHost = redirectUri ? new URL(redirectUri).host : "(not set)";
-    console.log("[Fitbit Auth] Request host:", requestHost);
-    console.log("[Fitbit Auth] Redirect URI host:", redirectHost);
-
-    // If OAuth starts on a different deployment host than callback host,
-    // cookies are scoped to the wrong domain and state validation will fail.
-    if (redirectUri && requestHost !== redirectHost) {
-      const canonicalAuthUrl = new URL(
-        "/api/fitbit/auth",
-        new URL(redirectUri).origin,
-      );
-      console.log(
-        "[Fitbit Auth] Host mismatch detected. Redirecting auth start to canonical host:",
-        canonicalAuthUrl.toString(),
-      );
-      return NextResponse.redirect(canonicalAuthUrl.toString());
-    }
+    console.log('[Fitbit Auth] Starting OAuth flow...')
+    console.log('[Fitbit Auth] NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
+    console.log('[Fitbit Auth] NODE_ENV:', process.env.NODE_ENV)
 
     if (!process.env.FITBIT_CLIENT_ID) {
       return NextResponse.json(
-        {
-          error:
-            "Fitbit integration not configured. Set FITBIT_CLIENT_ID in .env",
-        },
-        { status: 500 },
-      );
+        { error: 'Fitbit integration not configured. Set FITBIT_CLIENT_ID in .env' },
+        { status: 500 }
+      )
     }
 
     if (!process.env.NEXTAUTH_URL) {
       return NextResponse.json(
-        { error: "NEXTAUTH_URL is not configured in environment variables" },
-        { status: 500 },
-      );
+        { error: 'NEXTAUTH_URL is not configured in environment variables' },
+        { status: 500 }
+      )
     }
 
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = generateCodeChallenge(codeVerifier);
-    const state = randomUUID();
+    const codeVerifier = generateCodeVerifier()
+    const codeChallenge = generateCodeChallenge(codeVerifier)
+    const state = generateState()
 
-    const authURL = getFitbitAuthURL({ codeChallenge, state });
-    console.log(
-      "[Fitbit Auth] Redirecting to:",
-      authURL.substring(0, 100) + "...",
-    );
-    console.log("[Fitbit Auth] Full auth URL:", authURL);
-
-    const oauthContext = Buffer.from(
-      JSON.stringify({ state, codeVerifier }),
-      "utf8",
-    ).toString("base64url");
-
-    const response = NextResponse.redirect(authURL);
-    response.cookies.set("fitbit_oauth_ctx", oauthContext, {
+    // Store PKCE verifier and state in cookies for the callback
+    const cookieStore = await cookies()
+    cookieStore.set('fitbit_code_verifier', codeVerifier, {
       httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minutes
+      path: '/',
+    })
+    cookieStore.set('fitbit_state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 600,
-      path: "/",
-    });
+      path: '/',
+    })
 
-    return response;
+    const authURL = getFitbitAuthURL({ codeChallenge, state })
+    console.log('[Fitbit Auth] Redirecting to:', authURL.substring(0, 100) + '...')
+    console.log('[Fitbit Auth] Full auth URL:', authURL)
+
+    return NextResponse.redirect(authURL)
   } catch (error) {
-    console.error("[Fitbit Auth] Error:", error);
+    console.error('[Fitbit Auth] Error:', error)
     return NextResponse.json(
-      {
-        error: "Failed to initiate Fitbit authorization",
-        details: String(error),
-      },
-      { status: 500 },
-    );
+      { error: 'Failed to initiate Fitbit authorization', details: String(error) },
+      { status: 500 }
+    )
   }
 }
